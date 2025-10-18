@@ -319,11 +319,30 @@ class SessionPlugin(BasePlugin):
                     data['sent_code_type'] = str(sent_code.type)
                     task['step'] = 'code'
                     
-                    await event.reply(
-                        "✅ 验证码已发送到您的 Telegram 账号\n\n"
-                        "请输入您收到的验证码，格式为: `1 2 3 4 5` (用空格分隔)\n\n"
-                        "💡 请检查 Telegram 官方账号的消息"
-                    )
+                    # 根据验证码类型提供明确指引
+                    code_type_str = str(sent_code.type)
+                    if "APP" in code_type_str.upper():
+                        instruction = (
+                            "✅ **验证码已通过 Telegram 应用内消息发送**\n\n"
+                            "📱 **请按以下步骤操作**:\n"
+                            "1️⃣ 在 Telegram 中找到 **\"Telegram\"** 官方账号\n"
+                            "2️⃣ 查看最新的验证码消息（5位数字）\n"
+                            "3️⃣ 将验证码发送给我，格式: `1 2 3 4 5`\n\n"
+                            "⚠️ 验证码在 Telegram 应用内，不是短信！"
+                        )
+                    elif "SMS" in code_type_str.upper():
+                        instruction = (
+                            "✅ **验证码已通过短信发送到您的手机**\n\n"
+                            "📱 请查看手机短信，然后发送验证码\n"
+                            "格式: `1 2 3 4 5` (用空格分隔)"
+                        )
+                    else:
+                        instruction = (
+                            f"✅ 验证码已发送（类型: {sent_code.type}）\n\n"
+                            "请输入收到的验证码，格式: `1 2 3 4 5`"
+                        )
+                    
+                    await event.reply(instruction)
                 except Exception as e:
                     self.logger.error(f"发送验证码失败: {type(e).__name__}: {str(e)}")
                     await temp_client.disconnect()
