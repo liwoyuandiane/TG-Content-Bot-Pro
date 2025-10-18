@@ -305,24 +305,50 @@ class SessionPlugin(BasePlugin):
                 
                 try:
                     await temp_client.connect()
+                    self.logger.info(f"客户端已连接，准备发送验证码到: {phone_number}")
+                    
                     sent_code = await temp_client.send_code(phone_number)
+                    
+                    # 详细日志
+                    self.logger.info(f"send_code 返回: type={sent_code.type}, hash={sent_code.phone_code_hash[:20]}..., timeout={sent_code.timeout}")
+                    
                     data['phone_code_hash'] = sent_code.phone_code_hash
                     data['client'] = temp_client
                     data['code_sent_time'] = time.time()
+                    data['sent_code_type'] = str(sent_code.type)
                     task['step'] = 'code'
                     
-                    # 调试信息
-                    self.logger.info(f"验证码已发送 - 手机号: {phone_number}, hash: {sent_code.phone_code_hash[:20]}...")
+                    # 根据验证码类型显示不同提示
+                    code_type_msg = ""
+                    if "APP" in str(sent_code.type).upper():
+                        code_type_msg = "验证码已通过 **Telegram 应用内消息** 发送"
+                    elif "SMS" in str(sent_code.type).upper():
+                        code_type_msg = "验证码已通过 **短信 (SMS)** 发送到您的手机"
+                    elif "CALL" in str(sent_code.type).upper():
+                        code_type_msg = "验证码将通过 **语音电话** 告知"
+                    else:
+                        code_type_msg = f"验证码已发送 (类型: {sent_code.type})"
                     
                     await event.reply(
-                        "✅ 验证码已发送到您的 Telegram 账号\n\n"
+                        f"✅ {code_type_msg}\n\n"
                         "4️⃣ 请发送收到的 **验证码**\n"
                         "   (5位数字)\n\n"
-                        "⚠️ 验证码有效期3分钟，请尽快输入"
+                        f"⚠️ 验证码有效期: {sent_code.timeout if sent_code.timeout else 180} 秒\n"
+                        "💡 如果是 APP 内消息，请检查 Telegram 官方账号的消息"
                     )
                 except Exception as e:
+                    self.logger.error(f"发送验证码失败: {type(e).__name__}: {str(e)}")
                     await temp_client.disconnect()
-                    await event.reply(f"❌ 发送验证码失败: {str(e)}\n\n请使用 /generatesession 重新开始")
+                    await event.reply(
+                        f"❌ 发送验证码失败\n\n"
+                        f"错误类型: {type(e).__name__}\n"
+                        f"错误信息: {str(e)}\n\n"
+                        f"请检查:\n"
+                        f"1. API_ID 和 API_HASH 是否正确\n"
+                        f"2. 手机号格式是否正确 (需要+国家代码)\n"
+                        f"3. 该手机号是否已注册 Telegram\n\n"
+                        f"请使用 /generatesession 重新开始"
+                    )
                     del self.session_generation_tasks[user_id]
                     
             elif step == 'code':
