@@ -286,7 +286,8 @@ class SessionPlugin(BasePlugin):
                     sent_code = await temp_client.send_code(data['phone'])
                     data['phone_code_hash'] = sent_code.phone_code_hash
                     data['client'] = temp_client
-                    data['code_sent_time'] = asyncio.get_event_loop().time()
+                    # 使用time.time()替代asyncio.get_event_loop().time()以确保一致性
+                    data['code_sent_time'] = time.time()
                     task['step'] = 'code'
                     
                     await event.reply(
@@ -316,7 +317,8 @@ class SessionPlugin(BasePlugin):
                 code_sent_time = data.get('code_sent_time', 0)
                 # 修复时间判断逻辑，确保code_sent_time有效且未超时
                 if code_sent_time > 0:
-                    elapsed_time = asyncio.get_event_loop().time() - code_sent_time
+                    # 使用time.time()确保时间计算一致性
+                    elapsed_time = time.time() - code_sent_time
                     if elapsed_time > self.CODE_TIMEOUT:
                         if temp_client:
                             await temp_client.disconnect()
@@ -370,85 +372,6 @@ class SessionPlugin(BasePlugin):
                         f"`{session_string}`\n\n"
                         f"⚠️ 但自动保存失败，请手动保存到 .env 文件"
                     )
-                
-                try:
-                    await event.reply("⏳ 正在验证...")
-                    
-                    try:
-                        await temp_client.sign_in(
-                            data['phone'],
-                            data['phone_code_hash'],
-                            code
-                        )
-                    except Exception as sign_in_error:
-                        error_msg = str(sign_in_error)
-                        if 'SESSION_PASSWORD_NEEDED' in error_msg:
-                            # 需要两步验证密码
-                            data['need_password'] = True
-                            task['step'] = 'password'
-                            await event.reply(
-                                "🔐 检测到您的账号启用了两步验证\n\n"
-                                "请发送您的两步验证密码"
-                            )
-                            return
-                        else:
-                            # 重新抛出其他错误
-                            raise sign_in_error
-                    
-                    # 如果不需要密码，继续生成SESSION
-                    session_string = await temp_client.export_session_string()
-                    
-                    # 如果不需要密码，继续生成SESSION
-                    session_string = await temp_client.export_session_string()
-                    
-                    await temp_client.disconnect()
-                    
-                    del self.session_generation_tasks[user_id]
-                    
-                    success = await session_service.save_session(user_id, session_string)
-                    
-                    if success:
-                        await event.reply(
-                            "✅ **SESSION 生成成功！**\n\n"
-                            "SESSION 已自动保存到数据库\n"
-                            "重启机器人后即可使用\n\n"
-                            "🔐 使用 /mysession 查看您的 SESSION"
-                        )
-                    else:
-                        await event.reply(
-                            f"✅ **SESSION 生成成功！**\n\n"
-                            f"您的 SESSION 字符串：\n\n"
-                            f"`{session_string}`\n\n"
-                            f"⚠️ 但自动保存失败，请手动保存到 .env 文件"
-                        )
-                    
-                except Exception as e:
-                    if temp_client:
-                        await temp_client.disconnect()
-                    
-                    error_msg = str(e)
-                    if 'PHONE_CODE_EXPIRED' in error_msg:
-                        await event.reply(
-                            "❌ 验证码已过期\n\n"
-                            "可能原因：\n"
-                            "• 输入验证码时间过长(超过3分钟)\n"
-                            "• 验证码已被使用\n\n"
-                            "💡 请使用 /generatesession 重新开始，并在收到验证码后立即输入"
-                        )
-                    elif 'PHONE_CODE_INVALID' in error_msg:
-                        await event.reply("❌ 验证码错误，请重新发送正确的验证码")
-                        return
-                    elif 'SESSION_PASSWORD_NEEDED' in error_msg:
-                        await event.reply(
-                            "❌ 您的账号启用了两步验证\n\n"
-                            "请使用 get_session.py 脚本生成 SESSION\n"
-                            "该功能暂不支持两步验证"
-                        )
-                    else:
-                        await event.reply(f"❌ 验证失败: {error_msg}\n\n请使用 /generatesession 重新开始")
-                    
-                    if user_id in self.session_generation_tasks:
-                        del self.session_generation_tasks[user_id]
                     
         except Exception as e:
             await event.reply(f"❌ 处理失败: {str(e)}\n\n请使用 /generatesession 重新开始")
