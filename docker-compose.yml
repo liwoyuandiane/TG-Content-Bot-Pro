@@ -1,0 +1,25 @@
+version: "3.8"
+
+services:
+  tg-bot:
+    build: .
+    container_name: tg-content-bot
+    restart: unless-stopped
+    environment:
+      # 必需配置
+      API_ID: ${API_ID}
+      API_HASH: ${API_HASH}
+      BOT_TOKEN: ${BOT_TOKEN}
+      AUTH: ${AUTH}
+      MONGO_DB: ${MONGO_DB}
+      
+      # 可选配置
+      SESSION: ${SESSION:-}
+      FORCESUB: ${FORCESUB:-}
+    
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
