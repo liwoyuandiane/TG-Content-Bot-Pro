@@ -290,7 +290,9 @@ class SessionPlugin(BasePlugin):
                     await event.reply("❌ 手机号码必须包含国家代码(以 + 开头)，请重新发送")
                     return
                 
-                data['phone'] = text
+                # 标准化手机号格式：移除所有空格和短横线
+                phone_number = text.replace(' ', '').replace('-', '').strip()
+                data['phone'] = phone_number
                 
                 await event.reply("⏳ 正在发送验证码，请稍候...")
                 
@@ -298,18 +300,20 @@ class SessionPlugin(BasePlugin):
                     f"temp_session_{user_id}",
                     api_id=data['api_id'],
                     api_hash=data['api_hash'],
-                    phone_number=data['phone'],
+                    phone_number=phone_number,
                     in_memory=True
                 )
                 
                 try:
                     await temp_client.connect()
-                    sent_code = await temp_client.send_code(data['phone'])
+                    sent_code = await temp_client.send_code(phone_number)
                     data['phone_code_hash'] = sent_code.phone_code_hash
                     data['client'] = temp_client
-                    # 使用time.time()替代asyncio.get_event_loop().time()以确保一致性
                     data['code_sent_time'] = time.time()
                     task['step'] = 'code'
+                    
+                    # 调试信息
+                    self.logger.info(f"验证码已发送 - 手机号: {phone_number}, hash: {sent_code.phone_code_hash[:20]}...")
                     
                     await event.reply(
                         "✅ 验证码已发送到您的 Telegram 账号\n\n"
@@ -343,7 +347,12 @@ class SessionPlugin(BasePlugin):
                 
                 try:
                     await event.reply("⏳ 正在验证验证码...")
-                    await temp_client.sign_in(data['phone'], phone_code_hash, code)
+                    
+                    # 调试信息
+                    phone_number = data['phone']
+                    self.logger.info(f"开始验证 - 手机号: {phone_number}, hash: {phone_code_hash[:20]}..., code: {code}")
+                    
+                    await temp_client.sign_in(phone_number, phone_code_hash, code)
                 except Exception as sign_in_error:
                     error_message = str(sign_in_error)
                     
@@ -365,9 +374,12 @@ class SessionPlugin(BasePlugin):
                         
                         try:
                             # 重新发送验证码
-                            sent_code = await temp_client.send_code(data['phone'])
+                            phone_number = data['phone']
+                            sent_code = await temp_client.send_code(phone_number)
                             data['phone_code_hash'] = sent_code.phone_code_hash
                             data['code_sent_time'] = time.time()
+                            
+                            self.logger.info(f"验证码重新发送 - 手机号: {phone_number}, 新hash: {sent_code.phone_code_hash[:20]}...")
                             
                             await event.reply(
                                 "✅ 新的验证码已发送到您的 Telegram 账号\n\n"
