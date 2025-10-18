@@ -1,6 +1,8 @@
 """会话管理插件"""
 import re
-from typing import List, Dict, Any
+import asyncio
+from typing import List, Dict, Any, Optional
+from pyrogram import Client
 
 from ..core.base_plugin import BasePlugin
 from ..core.clients import client_manager
@@ -15,6 +17,7 @@ class SessionPlugin(BasePlugin):
     
     def __init__(self):
         super().__init__("session")
+        self.session_generation_tasks: Dict[int, Dict[str, Any]] = {}
     
     async def on_load(self):
         """插件加载时注册事件处理器"""
@@ -27,6 +30,12 @@ class SessionPlugin(BasePlugin):
             incoming=True, from_users=settings.AUTH, pattern="/sessions"))
         client_manager.bot.add_event_handler(self._my_session, events.NewMessage(
             incoming=True, from_users=settings.AUTH, pattern="/mysession"))
+        client_manager.bot.add_event_handler(self._generate_session, events.NewMessage(
+            incoming=True, from_users=settings.AUTH, pattern="/generatesession"))
+        client_manager.bot.add_event_handler(self._cancel_session, events.NewMessage(
+            incoming=True, from_users=settings.AUTH, pattern="/cancelsession"))
+        client_manager.bot.add_event_handler(self._handle_text_input, events.NewMessage(
+            incoming=True, from_users=settings.AUTH, func=lambda e: not e.text.startswith('/')))
         
         self.logger.info("会话管理插件事件处理器已注册")
     
@@ -41,6 +50,12 @@ class SessionPlugin(BasePlugin):
             incoming=True, from_users=settings.AUTH, pattern="/sessions"))
         client_manager.bot.remove_event_handler(self._my_session, events.NewMessage(
             incoming=True, from_users=settings.AUTH, pattern="/mysession"))
+        client_manager.bot.remove_event_handler(self._generate_session, events.NewMessage(
+            incoming=True, from_users=settings.AUTH, pattern="/generatesession"))
+        client_manager.bot.remove_event_handler(self._cancel_session, events.NewMessage(
+            incoming=True, from_users=settings.AUTH, pattern="/cancelsession"))
+        client_manager.bot.remove_event_handler(self._handle_text_input, events.NewMessage(
+            incoming=True, from_users=settings.AUTH, func=lambda e: not e.text.startswith('/')))
         
         self.logger.info("会话管理插件事件处理器已移除")
     
@@ -166,6 +181,183 @@ class SessionPlugin(BasePlugin):
         
         except Exception as e:
             await event.reply(f"❌ 获取失败: {str(e)}")
+    
+    async def _generate_session(self, event):
+        """在线生成 SESSION 字符串"""
+        try:
+            user_id = event.sender_id
+            
+            if user_id in self.session_generation_tasks:
+                await event.reply("❌ 您已经有一个正在进行的 SESSION 生成任务\n\n使用 /cancelsession 取消")
+                return
+            
+            await event.reply(
+                "🔐 **在线生成 SESSION**\n\n"
+                "请按以下步骤操作：\n\n"
+                "1️⃣ 请发送您的 **API_ID**\n"
+                "   (从 my.telegram.org 获取)\n\n"
+                "⚠️ 请确保信息准确，否则生成会失败\n"
+                "💡 使用 /cancelsession 可随时取消"
+            )
+            
+            self.session_generation_tasks[user_id] = {
+                'step': 'api_id',
+                'data': {}
+            }
+            
+        except Exception as e:
+            await event.reply(f"❌ 启动生成失败: {str(e)}")
+    
+    async def _cancel_session(self, event):
+        """取消 SESSION 生成"""
+        try:
+            user_id = event.sender_id
+            
+            if user_id not in self.session_generation_tasks:
+                await event.reply("❌ 您没有正在进行的 SESSION 生成任务")
+                return
+            
+            del self.session_generation_tasks[user_id]
+            await event.reply("✅ SESSION 生成任务已取消")
+            
+        except Exception as e:
+            await event.reply(f"❌ 取消失败: {str(e)}")
+    
+    async def _handle_session_generation_input(self, event):
+        """处理 SESSION 生成过程中的用户输入"""
+        user_id = event.sender_id
+        
+        if user_id not in self.session_generation_tasks:
+            return
+        
+        task = self.session_generation_tasks[user_id]
+        step = task['step']
+        data = task['data']
+        text = event.text.strip()
+        
+        try:
+            if step == 'api_id':
+                try:
+                    api_id = int(text)
+                    data['api_id'] = api_id
+                    task['step'] = 'api_hash'
+                    await event.reply(
+                        "✅ API_ID 已接收\n\n"
+                        "2️⃣ 请发送您的 **API_HASH**\n"
+                        "   (从 my.telegram.org 获取)"
+                    )
+                except ValueError:
+                    await event.reply("❌ API_ID 必须是数字，请重新发送")
+                    
+            elif step == 'api_hash':
+                if len(text) < 10:
+                    await event.reply("❌ API_HASH 格式无效，请重新发送")
+                    return
+                
+                data['api_hash'] = text
+                task['step'] = 'phone'
+                await event.reply(
+                    "✅ API_HASH 已接收\n\n"
+                    "3️⃣ 请发送您的 **手机号码**\n"
+                    "   (包含国家代码，例如：+8613800138000)"
+                )
+                
+            elif step == 'phone':
+                if not text.startswith('+'):
+                    await event.reply("❌ 手机号码必须包含国家代码(以 + 开头)，请重新发送")
+                    return
+                
+                data['phone'] = text
+                
+                await event.reply("⏳ 正在发送验证码，请稍候...")
+                
+                temp_client = Client(
+                    f"temp_session_{user_id}",
+                    api_id=data['api_id'],
+                    api_hash=data['api_hash'],
+                    phone_number=data['phone'],
+                    in_memory=True
+                )
+                
+                try:
+                    await temp_client.connect()
+                    sent_code = await temp_client.send_code(data['phone'])
+                    data['phone_code_hash'] = sent_code.phone_code_hash
+                    data['client'] = temp_client
+                    task['step'] = 'code'
+                    
+                    await event.reply(
+                        "✅ 验证码已发送到您的 Telegram 账号\n\n"
+                        "4️⃣ 请发送收到的 **验证码**\n"
+                        "   (5位数字)"
+                    )
+                except Exception as e:
+                    await temp_client.disconnect()
+                    await event.reply(f"❌ 发送验证码失败: {str(e)}\n\n请使用 /generatesession 重新开始")
+                    del self.session_generation_tasks[user_id]
+                    
+            elif step == 'code':
+                code = text.replace('-', '').replace(' ', '')
+                
+                if not code.isdigit() or len(code) != 5:
+                    await event.reply("❌ 验证码格式无效(应为5位数字)，请重新发送")
+                    return
+                
+                temp_client = data.get('client')
+                if not temp_client:
+                    await event.reply("❌ 会话已过期，请使用 /generatesession 重新开始")
+                    del self.session_generation_tasks[user_id]
+                    return
+                
+                try:
+                    await event.reply("⏳ 正在验证...")
+                    
+                    await temp_client.sign_in(
+                        data['phone'],
+                        data['phone_code_hash'],
+                        code
+                    )
+                    
+                    session_string = await temp_client.export_session_string()
+                    
+                    await temp_client.disconnect()
+                    
+                    del self.session_generation_tasks[user_id]
+                    
+                    success = await session_service.save_session(user_id, session_string)
+                    
+                    if success:
+                        await event.reply(
+                            "✅ **SESSION 生成成功！**\n\n"
+                            "SESSION 已自动保存到数据库\n"
+                            "重启机器人后即可使用\n\n"
+                            "🔐 使用 /mysession 查看您的 SESSION"
+                        )
+                    else:
+                        await event.reply(
+                            f"✅ **SESSION 生成成功！**\n\n"
+                            f"您的 SESSION 字符串：\n\n"
+                            f"`{session_string}`\n\n"
+                            f"⚠️ 但自动保存失败，请手动保存到 .env 文件"
+                        )
+                    
+                except Exception as e:
+                    if temp_client:
+                        await temp_client.disconnect()
+                    await event.reply(f"❌ 验证失败: {str(e)}\n\n请使用 /generatesession 重新开始")
+                    del self.session_generation_tasks[user_id]
+                    
+        except Exception as e:
+            await event.reply(f"❌ 处理失败: {str(e)}\n\n请使用 /generatesession 重新开始")
+            if user_id in self.session_generation_tasks:
+                del self.session_generation_tasks[user_id]
+    
+    async def _handle_text_input(self, event):
+        """处理文本输入,用于 SESSION 生成流程"""
+        user_id = event.sender_id
+        
+        if user_id in self.session_generation_tasks:
+            await self._handle_session_generation_input(event)
 
 # 创建插件实例并注册
 session_plugin = SessionPlugin()
