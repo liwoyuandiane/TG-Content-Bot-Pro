@@ -193,19 +193,40 @@ class SessionPlugin(BasePlugin):
                 await event.reply("❌ 您已经有一个正在进行的 SESSION 生成任务\n\n使用 /cancelsession 取消")
                 return
             
-            await event.reply(
-                "🔐 **在线生成 SESSION**\n\n"
-                "请按以下步骤操作：\n\n"
-                "1️⃣ 请发送您的 **API_ID**\n"
-                "   (从 my.telegram.org 获取)\n\n"
-                "⚠️ 请确保信息准确，否则生成会失败\n"
-                "💡 使用 /cancelsession 可随时取消"
-            )
+            # 检查环境变量中是否已有 API_ID 和 API_HASH
+            has_api_credentials = bool(settings.API_ID) and bool(settings.API_HASH)
             
-            self.session_generation_tasks[user_id] = {
-                'step': 'api_id',
-                'data': {}
-            }
+            if has_api_credentials:
+                await event.reply(
+                    "🔐 **在线生成 SESSION**\n\n"
+                    "检测到已配置的 API 凭证，将直接使用。\n\n"
+                    "请发送您的 **手机号码**\n"
+                    "   (包含国家代码，例如：+8613800138000)\n\n"
+                    "⚠️ 请确保手机号码正确，否则生成会失败\n"
+                    "💡 使用 /cancelsession 可随时取消"
+                )
+                
+                self.session_generation_tasks[user_id] = {
+                    'step': 'phone',
+                    'data': {
+                        'api_id': settings.API_ID,
+                        'api_hash': settings.API_HASH
+                    }
+                }
+            else:
+                await event.reply(
+                    "🔐 **在线生成 SESSION**\n\n"
+                    "请按以下步骤操作：\n\n"
+                    "1️⃣ 请发送您的 **API_ID**\n"
+                    "   (从 my.telegram.org 获取)\n\n"
+                    "⚠️ 请确保信息准确，否则生成会失败\n"
+                    "💡 使用 /cancelsession 可随时取消"
+                )
+                
+                self.session_generation_tasks[user_id] = {
+                    'step': 'api_id',
+                    'data': {}
+                }
             
         except Exception as e:
             await event.reply(f"❌ 启动生成失败: {str(e)}")
