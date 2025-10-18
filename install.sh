@@ -217,7 +217,17 @@ clone_repository() {
     if [ -d "$install_dir/.git" ]; then
         print_info "目录已包含 git 仓库，更新代码..."
         cd "$install_dir"
+        # 处理本地修改，使用 stash 保存本地修改后再更新
+        if ! git diff --quiet || ! git diff --cached --quiet; then
+            print_warning "检测到本地修改，使用 stash 临时保存"
+            git stash push -m "Auto stash before update"
+        fi
         git pull origin main
+        # 如果之前有 stash，恢复它
+        if git stash list | grep -q "Auto stash before update"; then
+            print_info "恢复之前的本地修改"
+            git stash pop
+        fi
     else
         print_info "克隆代码到: $install_dir"
         git clone https://github.com/liwoyuandiane/TG-Content-Bot-Pro.git "$install_dir"
@@ -231,15 +241,40 @@ clone_repository() {
 setup_python_environment() {
     print_step "设置 Python 环境"
     
-    print_info "创建虚拟环境..."
-    python3 -m venv venv
+    # 检查是否已存在虚拟环境
+    if [ -d "venv" ]; then
+        print_info "检测到已存在的虚拟环境"
+        # 检查虚拟环境是否有效
+        if [ -f "venv/bin/activate" ]; then
+            print_info "激活现有虚拟环境..."
+            source venv/bin/activate
+            
+            # 检查是否有新的依赖需要安装
+            print_info "检查依赖更新..."
+            if pip install -r requirements.txt --dry-run 2>&1 | grep -q "Would install"; then
+                print_info "发现新的依赖，正在安装..."
+                pip install -r requirements.txt
+                print_success "依赖更新完成"
+            else
+                print_success "依赖已是最新的"
+            fi
+        else
+            print_warning "虚拟环境损坏，重新创建..."
+            rm -rf venv
+            python3 -m venv venv
+            source venv/bin/activate
+            pip install --upgrade pip >/dev/null 2>&1
+            pip install -r requirements.txt
+        fi
+    else
+        print_info "创建新的虚拟环境..."
+        python3 -m venv venv
+        source venv/bin/activate
+        pip install --upgrade pip >/dev/null 2>&1
+        pip install -r requirements.txt
+    fi
     
-    print_info "激活虚拟环境并安装依赖..."
-    source venv/bin/activate
-    pip install --upgrade pip >/dev/null 2>&1
-    pip install -r requirements.txt
-    
-    print_success "Python 依赖安装完成"
+    print_success "Python 环境设置完成"
 }
 
 # 收集环境变量
