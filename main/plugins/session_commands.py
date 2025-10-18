@@ -349,6 +349,50 @@ class SessionPlugin(BasePlugin):
                         )
                         del self.session_generation_tasks[user_id]
                         return
+                
+                # 使用验证码登录
+                try:
+                    await event.reply("⏳ 正在验证验证码...")
+                    phone_code_hash = data.get('phone_code_hash')
+                    await temp_client.sign_in(data['phone'], phone_code_hash, code)
+                except Exception as sign_in_error:
+                    # 检查是否需要密码
+                    if "password" in str(sign_in_error).lower() or "two_factor" in str(sign_in_error).lower():
+                        task['step'] = 'password'
+                        await event.reply(
+                            "🔐 检测到您的账户启用了两步验证\n\n"
+                            "请发送您的 **两步验证密码**"
+                        )
+                        return
+                    else:
+                        await event.reply(f"❌ 验证码验证失败: {str(sign_in_error)}\n\n请使用 /generatesession 重新开始")
+                        await temp_client.disconnect()
+                        del self.session_generation_tasks[user_id]
+                        return
+                
+                # 登录成功，生成SESSION
+                session_string = await temp_client.export_session_string()
+                
+                await temp_client.disconnect()
+                
+                del self.session_generation_tasks[user_id]
+                
+                success = await session_service.save_session(user_id, session_string)
+                
+                if success:
+                    await event.reply(
+                        "✅ **SESSION 生成成功！**\n\n"
+                        "SESSION 已自动保存到数据库\n"
+                        "重启机器人后即可使用\n\n"
+                        "🔐 使用 /mysession 查看您的 SESSION"
+                    )
+                else:
+                    await event.reply(
+                        f"✅ **SESSION 生成成功！**\n\n"
+                        f"您的 SESSION 字符串：\n\n"
+                        f"`{session_string}`\n\n"
+                        f"⚠️ 但自动保存失败，请手动保存到 .env 文件"
+                    )
             
             elif step == 'password':
                 # 处理两步验证密码
