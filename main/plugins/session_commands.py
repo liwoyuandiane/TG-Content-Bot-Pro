@@ -314,26 +314,91 @@ class SessionPlugin(BasePlugin):
                     return
                 
                 code_sent_time = data.get('code_sent_time', 0)
-                elapsed_time = asyncio.get_event_loop().time() - code_sent_time
-                if elapsed_time > self.CODE_TIMEOUT:
-                    if temp_client:
-                        await temp_client.disconnect()
-                    await event.reply(
-                        "❌ 验证码已过期(超过3分钟)\n\n"
-                        "请使用 /generatesession 重新开始"
-                    )
+                # 修复时间判断逻辑，确保code_sent_time有效且未超时
+                if code_sent_time > 0:
+                    elapsed_time = asyncio.get_event_loop().time() - code_sent_time
+                    if elapsed_time > self.CODE_TIMEOUT:
+                        if temp_client:
+                            await temp_client.disconnect()
+                        await event.reply(
+                            "❌ 验证码已过期(超过3分钟)\n\n"
+                            "请使用 /generatesession 重新开始"
+                        )
+                        del self.session_generation_tasks[user_id]
+                        return
+            
+            elif step == 'password':
+                # 处理两步验证密码
+                temp_client = data.get('client')
+                if not temp_client:
+                    await event.reply("❌ 会话已过期，请使用 /generatesession 重新开始")
                     del self.session_generation_tasks[user_id]
                     return
+                
+                password = text.strip()
+                if not password:
+                    await event.reply("❌ 密码不能为空，请重新发送")
+                    return
+                
+                try:
+                    await event.reply("⏳ 正在验证两步验证密码...")
+                    await temp_client.check_password(password)
+                except Exception as pwd_error:
+                    await event.reply(f"❌ 两步验证密码错误: {str(pwd_error)}\n\n请重新发送密码")
+                    return
+                
+                # 密码验证成功，继续生成SESSION
+                session_string = await temp_client.export_session_string()
+                
+                await temp_client.disconnect()
+                
+                del self.session_generation_tasks[user_id]
+                
+                success = await session_service.save_session(user_id, session_string)
+                
+                if success:
+                    await event.reply(
+                        "✅ **SESSION 生成成功！**\n\n"
+                        "SESSION 已自动保存到数据库\n"
+                        "重启机器人后即可使用\n\n"
+                        "🔐 使用 /mysession 查看您的 SESSION"
+                    )
+                else:
+                    await event.reply(
+                        f"✅ **SESSION 生成成功！**\n\n"
+                        f"您的 SESSION 字符串：\n\n"
+                        f"`{session_string}`\n\n"
+                        f"⚠️ 但自动保存失败，请手动保存到 .env 文件"
+                    )
                 
                 try:
                     await event.reply("⏳ 正在验证...")
                     
-                    await temp_client.sign_in(
-                        data['phone'],
-                        data['phone_code_hash'],
-                        code
-                    )
+                    try:
+                        await temp_client.sign_in(
+                            data['phone'],
+                            data['phone_code_hash'],
+                            code
+                        )
+                    except Exception as sign_in_error:
+                        error_msg = str(sign_in_error)
+                        if 'SESSION_PASSWORD_NEEDED' in error_msg:
+                            # 需要两步验证密码
+                            data['need_password'] = True
+                            task['step'] = 'password'
+                            await event.reply(
+                                "🔐 检测到您的账号启用了两步验证\n\n"
+                                "请发送您的两步验证密码"
+                            )
+                            return
+                        else:
+                            # 重新抛出其他错误
+                            raise sign_in_error
                     
+                    # 如果不需要密码，继续生成SESSION
+                    session_string = await temp_client.export_session_string()
+                    
+                    # 如果不需要密码，继续生成SESSION
                     session_string = await temp_client.export_session_string()
                     
                     await temp_client.disconnect()
