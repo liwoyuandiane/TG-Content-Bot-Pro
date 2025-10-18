@@ -324,11 +324,14 @@ class SessionPlugin(BasePlugin):
                     if "APP" in code_type_str.upper():
                         instruction = (
                             "✅ **验证码已通过 Telegram 应用内消息发送**\n\n"
-                            "📱 **请按以下步骤操作**:\n"
-                            "1️⃣ 在 Telegram 中找到 **\"Telegram\"** 官方账号\n"
-                            "2️⃣ 查看最新的验证码消息（5位数字）\n"
-                            "3️⃣ 将验证码发送给我，格式: `1 2 3 4 5`\n\n"
-                            "⚠️ 验证码在 Telegram 应用内，不是短信！"
+                            "📱 **验证码查找方法**:\n"
+                            "1️⃣ 查看 Telegram 通知栏\n"
+                            "2️⃣ 在聊天列表顶部查找 \"Telegram\" 官方账号\n"
+                            "3️⃣ 检查是否有验证码弹窗\n\n"
+                            "❓ **看不到验证码？**\n"
+                            "• 发送 `resend` 切换为短信接收\n"
+                            "• 或直接发送验证码: `1 2 3 4 5`\n\n"
+                            f"⏱ 下一种方式: {sent_code.next_type if sent_code.next_type else '短信'}"
                         )
                     elif "SMS" in code_type_str.upper():
                         instruction = (
@@ -359,6 +362,38 @@ class SessionPlugin(BasePlugin):
                     del self.session_generation_tasks[user_id]
                     
             elif step == 'code':
+                # 检查是否是重新发送请求
+                if text.lower() in ['resend', '重发', '重新发送']:
+                    temp_client = data.get('client')
+                    phone_number = data.get('phone')
+                    
+                    if not temp_client or not phone_number:
+                        await event.reply("❌ 会话已过期，请使用 /generatesession 重新开始")
+                        del self.session_generation_tasks[user_id]
+                        return
+                    
+                    try:
+                        await event.reply("⏳ 正在重新发送验证码...")
+                        sent_code = await temp_client.resend_code(phone_number, data['phone_code_hash'])
+                        
+                        data['phone_code_hash'] = sent_code.phone_code_hash
+                        data['code_sent_time'] = time.time()
+                        
+                        self.logger.info(f"验证码重新发送 - 类型: {sent_code.type}")
+                        
+                        await event.reply(
+                            f"✅ 验证码已重新发送！\n\n"
+                            f"发送方式: {sent_code.type}\n"
+                            f"请输入验证码: `1 2 3 4 5`"
+                        )
+                        return
+                    except Exception as e:
+                        self.logger.error(f"重新发送失败: {e}")
+                        await event.reply(f"❌ 重新发送失败: {str(e)}\n\n请使用 /generatesession 重新开始")
+                        await temp_client.disconnect()
+                        del self.session_generation_tasks[user_id]
+                        return
+                
                 # 移除验证码中的空格（参考开源项目格式：1 2 3 4 5）
                 code = text.replace(' ', '').strip()
                 
