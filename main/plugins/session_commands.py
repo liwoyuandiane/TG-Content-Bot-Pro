@@ -335,25 +335,14 @@ class SessionPlugin(BasePlugin):
                     del self.session_generation_tasks[user_id]
                     return
                 
-                code_sent_time = data.get('code_sent_time', 0)
-                # 修复时间判断逻辑，确保code_sent_time有效且未超时
-                if code_sent_time > 0:
-                    # 使用time.time()确保时间计算一致性
-                    elapsed_time = time.time() - code_sent_time
-                    if elapsed_time > self.CODE_TIMEOUT:
-                        if temp_client:
-                            await temp_client.disconnect()
-                        await event.reply(
-                            "❌ 验证码已过期(超过3分钟)\n\n"
-                            "请使用 /generatesession 重新开始"
-                        )
-                        del self.session_generation_tasks[user_id]
-                        return
+                phone_code_hash = data.get('phone_code_hash')
+                if not phone_code_hash:
+                    await event.reply("❌ 未找到验证码哈希值，请使用 /generatesession 重新开始")
+                    del self.session_generation_tasks[user_id]
+                    return
                 
-                # 使用验证码登录
                 try:
                     await event.reply("⏳ 正在验证验证码...")
-                    phone_code_hash = data.get('phone_code_hash')
                     await temp_client.sign_in(data['phone'], phone_code_hash, code)
                 except Exception as sign_in_error:
                     # 检查是否需要密码
