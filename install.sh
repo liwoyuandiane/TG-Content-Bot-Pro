@@ -801,10 +801,10 @@ main() {
     echo ""
     print_info "后台运行（推荐）:"
     echo "  cd $INSTALL_DIR"
-    echo "  nohup ./start.sh > bot.log 2>&1 &"
+    echo "  nohup ./start.sh > logs/bot.log 2>&1 &"
     echo ""
     print_info "查看日志:"
-    echo "  tail -f $INSTALL_DIR/bot.log"
+    echo "  tail -f $INSTALL_DIR/logs/bot.log"
     echo ""
 }
 

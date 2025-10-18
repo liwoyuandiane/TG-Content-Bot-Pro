@@ -1,7 +1,7 @@
 #!/bin/bash
 # TG-Content-Bot-Pro 启动脚本
 # 直接运行: ./start.sh
-# 后台运行: nohup ./start.sh > bot.log 2>&1 &
+# 后台运行: nohup ./start.sh > logs/bot.log 2>&1 &
 
 # 获取脚本所在目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

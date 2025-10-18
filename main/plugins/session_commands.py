@@ -1,6 +1,7 @@
 """会话管理插件"""
 import re
 import asyncio
+import time
 from typing import List, Dict, Any, Optional
 from pyrogram import Client
 
@@ -18,6 +19,7 @@ class SessionPlugin(BasePlugin):
     def __init__(self):
         super().__init__("session")
         self.session_generation_tasks: Dict[int, Dict[str, Any]] = {}
+        self.CODE_TIMEOUT = 180
     
     async def on_load(self):
         """插件加载时注册事件处理器"""
@@ -284,12 +286,14 @@ class SessionPlugin(BasePlugin):
                     sent_code = await temp_client.send_code(data['phone'])
                     data['phone_code_hash'] = sent_code.phone_code_hash
                     data['client'] = temp_client
+                    data['code_sent_time'] = asyncio.get_event_loop().time()
                     task['step'] = 'code'
                     
                     await event.reply(
                         "✅ 验证码已发送到您的 Telegram 账号\n\n"
                         "4️⃣ 请发送收到的 **验证码**\n"
-                        "   (5位数字)"
+                        "   (5位数字)\n\n"
+                        "⚠️ 验证码有效期3分钟，请尽快输入"
                     )
                 except Exception as e:
                     await temp_client.disconnect()
@@ -306,6 +310,18 @@ class SessionPlugin(BasePlugin):
                 temp_client = data.get('client')
                 if not temp_client:
                     await event.reply("❌ 会话已过期，请使用 /generatesession 重新开始")
+                    del self.session_generation_tasks[user_id]
+                    return
+                
+                code_sent_time = data.get('code_sent_time', 0)
+                elapsed_time = asyncio.get_event_loop().time() - code_sent_time
+                if elapsed_time > self.CODE_TIMEOUT:
+                    if temp_client:
+                        await temp_client.disconnect()
+                    await event.reply(
+                        "❌ 验证码已过期(超过3分钟)\n\n"
+                        "请使用 /generatesession 重新开始"
+                    )
                     del self.session_generation_tasks[user_id]
                     return
                 
@@ -344,8 +360,30 @@ class SessionPlugin(BasePlugin):
                 except Exception as e:
                     if temp_client:
                         await temp_client.disconnect()
-                    await event.reply(f"❌ 验证失败: {str(e)}\n\n请使用 /generatesession 重新开始")
-                    del self.session_generation_tasks[user_id]
+                    
+                    error_msg = str(e)
+                    if 'PHONE_CODE_EXPIRED' in error_msg:
+                        await event.reply(
+                            "❌ 验证码已过期\n\n"
+                            "可能原因：\n"
+                            "• 输入验证码时间过长(超过3分钟)\n"
+                            "• 验证码已被使用\n\n"
+                            "💡 请使用 /generatesession 重新开始，并在收到验证码后立即输入"
+                        )
+                    elif 'PHONE_CODE_INVALID' in error_msg:
+                        await event.reply("❌ 验证码错误，请重新发送正确的验证码")
+                        return
+                    elif 'SESSION_PASSWORD_NEEDED' in error_msg:
+                        await event.reply(
+                            "❌ 您的账号启用了两步验证\n\n"
+                            "请使用 get_session.py 脚本生成 SESSION\n"
+                            "该功能暂不支持两步验证"
+                        )
+                    else:
+                        await event.reply(f"❌ 验证失败: {error_msg}\n\n请使用 /generatesession 重新开始")
+                    
+                    if user_id in self.session_generation_tasks:
+                        del self.session_generation_tasks[user_id]
                     
         except Exception as e:
             await event.reply(f"❌ 处理失败: {str(e)}\n\n请使用 /generatesession 重新开始")
