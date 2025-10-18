@@ -18,7 +18,6 @@ class SessionPlugin(BasePlugin):
     def __init__(self):
         super().__init__("session")
         self.session_generation_tasks: Dict[int, Dict[str, Any]] = {}
-        self.CODE_TIMEOUT = 180
     
     async def on_load(self):
         """插件加载时注册事件处理器"""
