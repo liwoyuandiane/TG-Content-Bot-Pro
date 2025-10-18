@@ -345,16 +345,45 @@ class SessionPlugin(BasePlugin):
                     await event.reply("⏳ 正在验证验证码...")
                     await temp_client.sign_in(data['phone'], phone_code_hash, code)
                 except Exception as sign_in_error:
+                    error_message = str(sign_in_error)
+                    
                     # 检查是否需要密码
-                    if "password" in str(sign_in_error).lower() or "two_factor" in str(sign_in_error).lower():
+                    if "password" in error_message.lower() or "two_factor" in error_message.lower():
                         task['step'] = 'password'
                         await event.reply(
                             "🔐 检测到您的账户启用了两步验证\n\n"
                             "请发送您的 **两步验证密码**"
                         )
                         return
+                    
+                    # 检查验证码是否过期
+                    elif "PHONE_CODE_EXPIRED" in error_message:
+                        await event.reply(
+                            "❌ 验证码已过期\n\n"
+                            "⏳ 正在重新发送验证码，请稍候..."
+                        )
+                        
+                        try:
+                            # 重新发送验证码
+                            sent_code = await temp_client.send_code(data['phone'])
+                            data['phone_code_hash'] = sent_code.phone_code_hash
+                            data['code_sent_time'] = time.time()
+                            
+                            await event.reply(
+                                "✅ 新的验证码已发送到您的 Telegram 账号\n\n"
+                                "4️⃣ 请发送收到的 **验证码**\n"
+                                "   (5位数字)\n\n"
+                                "⚠️ 请尽快输入验证码"
+                            )
+                            return
+                        except Exception as resend_error:
+                            await event.reply(f"❌ 重新发送验证码失败: {str(resend_error)}\n\n请使用 /generatesession 重新开始")
+                            await temp_client.disconnect()
+                            del self.session_generation_tasks[user_id]
+                            return
+                    
                     else:
-                        await event.reply(f"❌ 验证码验证失败: {str(sign_in_error)}\n\n请使用 /generatesession 重新开始")
+                        await event.reply(f"❌ 验证码验证失败: {error_message}\n\n请使用 /generatesession 重新开始")
                         await temp_client.disconnect()
                         del self.session_generation_tasks[user_id]
                         return
