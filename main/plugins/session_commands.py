@@ -289,17 +289,18 @@ class SessionPlugin(BasePlugin):
                     await event.reply("❌ 手机号码必须包含国家代码(以 + 开头)，请重新发送")
                     return
                 
-                # 标准化手机号格式：移除所有空格和短横线
-                phone_number = text.replace(' ', '').replace('-', '').strip()
+                # 标准化手机号格式
+                phone_number = text.strip()
                 data['phone'] = phone_number
                 
                 await event.reply("⏳ 正在发送验证码，请稍候...")
                 
-                # 创建临时客户端（不传递 phone_number 参数）
+                # 创建临时客户端（参考开源项目）
                 temp_client = Client(
-                    f"temp_session_{user_id}",
+                    f"temp_{user_id}",
                     api_id=data['api_id'],
                     api_hash=data['api_hash'],
+                    device_model="TG-Content-Bot Session Generator",
                     in_memory=True
                 )
                 
@@ -318,23 +319,10 @@ class SessionPlugin(BasePlugin):
                     data['sent_code_type'] = str(sent_code.type)
                     task['step'] = 'code'
                     
-                    # 根据验证码类型显示不同提示
-                    code_type_msg = ""
-                    if "APP" in str(sent_code.type).upper():
-                        code_type_msg = "验证码已通过 **Telegram 应用内消息** 发送"
-                    elif "SMS" in str(sent_code.type).upper():
-                        code_type_msg = "验证码已通过 **短信 (SMS)** 发送到您的手机"
-                    elif "CALL" in str(sent_code.type).upper():
-                        code_type_msg = "验证码将通过 **语音电话** 告知"
-                    else:
-                        code_type_msg = f"验证码已发送 (类型: {sent_code.type})"
-                    
                     await event.reply(
-                        f"✅ {code_type_msg}\n\n"
-                        "4️⃣ 请发送收到的 **验证码**\n"
-                        "   (5位数字)\n\n"
-                        f"⚠️ 验证码有效期: {sent_code.timeout if sent_code.timeout else 180} 秒\n"
-                        "💡 如果是 APP 内消息，请检查 Telegram 官方账号的消息"
+                        "✅ 验证码已发送到您的 Telegram 账号\n\n"
+                        "请输入您收到的验证码，格式为: `1 2 3 4 5` (用空格分隔)\n\n"
+                        "💡 请检查 Telegram 官方账号的消息"
                     )
                 except Exception as e:
                     self.logger.error(f"发送验证码失败: {type(e).__name__}: {str(e)}")
@@ -352,11 +340,11 @@ class SessionPlugin(BasePlugin):
                     del self.session_generation_tasks[user_id]
                     
             elif step == 'code':
-                # 移除验证码中的空格和短横线
-                code = text.replace(' ', '').replace('-', '').strip()
+                # 移除验证码中的空格（参考开源项目格式：1 2 3 4 5）
+                code = text.replace(' ', '').strip()
                 
                 if not code.isdigit() or len(code) != 5:
-                    await event.reply("❌ 验证码格式无效(应为5位数字)，请重新发送")
+                    await event.reply("❌ 验证码格式无效(应为5位数字)\n\n请按格式发送，例如: `1 2 3 4 5`")
                     return
                 
                 temp_client = data.get('client')
