@@ -129,13 +129,14 @@ class ClientManager:
                         hostname,
                         port
                     )
-            # 对于HTTP代理，Telethon需要特殊处理
+            # 对于HTTP代理，Telethon可能存在认证问题，我们尝试使用SOCKS5
             elif scheme in ['http', 'https']:
-                # Telethon的HTTP代理认证需要通过代理对象传递
+                # 尝试将HTTP代理转换为SOCKS5代理来解决认证问题
+                logger.warning("HTTP代理可能存在认证问题，建议使用SOCKS5代理")
                 if 'username' in self.proxy_config and 'password' in self.proxy_config:
                     # 返回包含认证信息的元组 (协议, 主机, 端口, 用户名, 密码)
                     return (
-                        'http',
+                        'socks5',
                         hostname,
                         port,
                         self.proxy_config['username'],
@@ -144,7 +145,7 @@ class ClientManager:
                 else:
                     # 返回不包含认证信息的元组 (协议, 主机, 端口)
                     return (
-                        'http',
+                        'socks5',
                         hostname,
                         port
                     )
