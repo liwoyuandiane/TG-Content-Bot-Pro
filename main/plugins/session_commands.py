@@ -69,52 +69,47 @@ class SessionPlugin(BasePlugin):
         # 更彻底的清理字符串，移除所有非base64字符
         cleaned_session = re.sub(r'[^A-Za-z0-9+/=]', '', session_string)
         
-        # 基本格式检查（Pyrogram session 字符串通常是 base64 编码）
-        if not re.match(r"^[A-Za-z0-9+/=]+$", cleaned_session):
-            return False, "SESSION字符串格式无效"
-        
-        # 长度检查
+        # 基本长度检查
         if len(cleaned_session) < 50:
             return False, "SESSION字符串长度不足"
         
-        # Base64格式检查
-        if cleaned_session.count('=') > 2:
-            return False, "SESSION字符串格式无效"
+        # 对于可能被截断的字符串，我们采用更宽松的验证
+        # 只要清理后的字符串看起来像Base64格式即可
+        if re.match(r'^[A-Za-z0-9+/]*={0,2}$', cleaned_session):
+            return True, "有效"
         
-        # 检查是否为有效的base64格式
-        try:
-            import base64
-            # 尝试解码以验证格式
-            base64.b64decode(cleaned_session)
-        except Exception:
-            return False, "SESSION字符串不是有效的Base64格式"
-        
-        return True, "有效"
+        return False, "SESSION字符串格式无效"
     
     async def _add_session(self, event):
         """添加 SESSION 字符串"""
         try:
             text = event.text.strip()
             
-            if len(text.split(maxsplit=1)) < 2:
-                await event.reply(
-                    "**添加 SESSION 字符串**\n\n"
-                    "用法:\n"
-                    "  /addsession <session_string>\n\n"
-                    "示例:\n"
-                    "  /addsession abc123...xyz\n\n"
-                    "获取 SESSION:\n"
-                    "运行 get_session.py 脚本生成\n\n"
-                    "请输入正确的 SESSION 字符串"
-                )
-                return
-            
-            session_string = text.split(maxsplit=1)[1].strip()
+            # 检查是否是直接跟在命令后面的 SESSION 字符串
+            if len(text.split(maxsplit=1)) >= 2:
+                session_string = text.split(maxsplit=1)[1].strip()
+            else:
+                # 如果没有直接提供，启动一个对话来获取 SESSION 字符串
+                async with client_manager.bot.conversation(event.chat_id) as conv:
+                    await conv.send_message(
+                        "**请输入 SESSION 字符串**\n\n"
+                        "请直接发送您的 SESSION 字符串，我会自动处理其中可能包含的换行符和空格。\n\n"
+                        "提示：您可以从 @sessionbot 或通过运行 get_session.py 脚本获取 SESSION 字符串。"
+                    )
+                    try:
+                        response = await conv.get_response(timeout=120)
+                        session_string = response.text.strip()
+                    except asyncio.TimeoutError:
+                        await conv.send_message("⏱️ 等待响应超时，请重新使用 /addsession 命令。")
+                        return
+                    except Exception as e:
+                        await conv.send_message(f"❌ 获取 SESSION 字符串时出错: {str(e)}")
+                        return
             
             # 验证 SESSION 字符串
             is_valid, message = self._validate_session_string(session_string)
             if not is_valid:
-                await event.reply(f"❌ {message}")
+                await event.reply(f"❌ {message}\n\n请确保您发送的是有效的 SESSION 字符串。")
                 return
             
             # 使用清理后的 SESSION 字符串
