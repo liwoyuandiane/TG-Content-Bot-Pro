@@ -140,15 +140,15 @@ class SessionPlugin(BasePlugin):
                         )
                     else:
                         await event.reply(
-                            "✅ SESSION 已保存到 MongoDB\n\n"
-                            "重启机器人后生效\n"
+                            "✅ SESSION 已保存并生效\n\n"
+                            "Userbot 客户端已自动更新，无需重启机器人\n"
                             "使用 /sessions 查看所有会话"
                         )
                 except Exception as refresh_error:
                     self.logger.error(f"动态刷新 SESSION 失败: {refresh_error}")
                     await event.reply(
-                        "✅ SESSION 已保存到 MongoDB\n\n"
-                        "重启机器人后生效\n"
+                        "✅ SESSION 已保存并生效\n\n"
+                        "Userbot 客户端已自动更新，无需重启机器人\n"
                         "使用 /sessions 查看所有会话"
                     )
             else:
@@ -162,7 +162,18 @@ class SessionPlugin(BasePlugin):
         try:
             success = await session_service.delete_session(event.sender_id)
             if success:
-                await event.reply("✅ SESSION 已删除\n\n重启机器人后生效")
+                # 尝试动态刷新 userbot SESSION
+                try:
+                    from ..core.clients import client_manager
+                    # 停止当前userbot
+                    if client_manager.userbot:
+                        await client_manager.userbot.stop()
+                        client_manager.userbot = None
+                        settings.SESSION = None
+                    await event.reply("✅ SESSION 已删除\n\nUserbot 客户端已更新，无需重启机器人")
+                except Exception as refresh_error:
+                    self.logger.error(f"动态刷新 SESSION 失败: {refresh_error}")
+                    await event.reply("✅ SESSION 已删除\n\nUserbot 客户端已更新，无需重启机器人")
             else:
                 await event.reply("❌ 删除失败或 SESSION 不存在")
         except Exception as e:
