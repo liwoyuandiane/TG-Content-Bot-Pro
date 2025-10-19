@@ -81,6 +81,15 @@ async def startup():
         logger.error(f"客户端初始化失败: {e}", exc_info=True)
         logger.warning("将继续启动应用，但部分功能可能不可用")
     
+    # 启动任务队列
+    try:
+        from .services.download_task_manager import download_task_manager
+        await download_task_manager.start()
+        logger.info("✅ 下载任务队列已启动")
+    except Exception as e:
+        logger.error(f"启动任务队列失败: {e}", exc_info=True)
+        logger.warning("任务队列启动失败，批量下载功能可能不可用")
+    
     # 加载插件
     await load_all_plugins()
     
@@ -110,6 +119,16 @@ async def startup():
 async def shutdown():
     """应用关闭"""
     logger.info("正在关闭应用...")
+    
+    # 停止任务队列
+    try:
+        from .services.download_task_manager import download_task_manager
+        await download_task_manager.stop()
+        logger.info("任务队列已停止")
+    except Exception as e:
+        logger.error(f"停止任务队列失败: {e}", exc_info=True)
+    
+    # 停止客户端
     await client_manager.stop_clients()
     logger.info("应用已关闭")
 
