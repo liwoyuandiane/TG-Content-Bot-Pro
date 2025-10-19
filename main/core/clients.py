@@ -285,13 +285,31 @@ class ClientManager:
                 pyrogram_proxy_config = self._create_pyrogram_proxy_config(pyrogram_proxy)
                 if pyrogram_proxy_config:
                     logger.info(f"使用代理: {pyrogram_proxy_config['scheme']}://{pyrogram_proxy_config.get('username', '')}@{pyrogram_proxy_config['hostname']}:{pyrogram_proxy_config['port']}")
-                self.pyrogram_bot = Client(
-                    "SaveRestricted",
-                    bot_token=settings.BOT_TOKEN,
-                    api_id=settings.API_ID,
-                    api_hash=settings.API_HASH,
-                    proxy=pyrogram_proxy_config
-                )
+                
+                # 对于HTTP代理认证，Pyrogram可能不支持通过proxy参数传递
+                # 尝试使用环境变量设置代理
+                if pyrogram_proxy_config and pyrogram_proxy_config['scheme'] in ['http', 'https']:
+                    import os
+                    proxy_url = f"{pyrogram_proxy_config['scheme']}://{pyrogram_proxy_config.get('username', '')}:{pyrogram_proxy_config.get('password', '')}@{pyrogram_proxy_config['hostname']}:{pyrogram_proxy_config['port']}"
+                    os.environ['HTTP_PROXY'] = proxy_url
+                    os.environ['HTTPS_PROXY'] = proxy_url
+                    logger.info(f"通过环境变量设置代理: {proxy_url}")
+                    # 不传递proxy参数，让Pyrogram使用环境变量
+                    self.pyrogram_bot = Client(
+                        "SaveRestricted",
+                        bot_token=settings.BOT_TOKEN,
+                        api_id=settings.API_ID,
+                        api_hash=settings.API_HASH
+                    )
+                else:
+                    # 对于SOCKS代理或其他情况，正常使用proxy参数
+                    self.pyrogram_bot = Client(
+                        "SaveRestricted",
+                        bot_token=settings.BOT_TOKEN,
+                        api_id=settings.API_ID,
+                        api_hash=settings.API_HASH,
+                        proxy=pyrogram_proxy_config
+                    )
             else:
                 self.pyrogram_bot = Client(
                     "SaveRestricted",
@@ -346,13 +364,31 @@ class ClientManager:
                     pyrogram_proxy_config = self._create_pyrogram_proxy_config(pyrogram_proxy)
                     if pyrogram_proxy_config:
                         logger.info(f"Userbot使用代理: {pyrogram_proxy_config['scheme']}://{pyrogram_proxy_config.get('username', '')}@{pyrogram_proxy_config['hostname']}:{pyrogram_proxy_config['port']}")
-                    self.userbot = Client(
-                        "saverestricted", 
-                        session_string=settings.SESSION, 
-                        api_hash=settings.API_HASH, 
-                        api_id=settings.API_ID,
-                        proxy=pyrogram_proxy_config
-                    )
+                    
+                    # 对于HTTP代理认证，Pyrogram可能不支持通过proxy参数传递
+                    # 尝试使用环境变量设置代理
+                    if pyrogram_proxy_config and pyrogram_proxy_config['scheme'] in ['http', 'https']:
+                        import os
+                        proxy_url = f"{pyrogram_proxy_config['scheme']}://{pyrogram_proxy_config.get('username', '')}:{pyrogram_proxy_config.get('password', '')}@{pyrogram_proxy_config['hostname']}:{pyrogram_proxy_config['port']}"
+                        os.environ['HTTP_PROXY'] = proxy_url
+                        os.environ['HTTPS_PROXY'] = proxy_url
+                        logger.info(f"通过环境变量设置代理: {proxy_url}")
+                        # 不传递proxy参数，让Pyrogram使用环境变量
+                        self.userbot = Client(
+                            "saverestricted", 
+                            session_string=settings.SESSION, 
+                            api_hash=settings.API_HASH, 
+                            api_id=settings.API_ID
+                        )
+                    else:
+                        # 对于SOCKS代理或其他情况，正常使用proxy参数
+                        self.userbot = Client(
+                            "saverestricted", 
+                            session_string=settings.SESSION, 
+                            api_hash=settings.API_HASH, 
+                            api_id=settings.API_ID,
+                            proxy=pyrogram_proxy_config
+                        )
                 else:
                     self.userbot = Client(
                         "saverestricted", 
