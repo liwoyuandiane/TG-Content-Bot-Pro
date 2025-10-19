@@ -243,10 +243,17 @@ class ClientManager:
             self.logger.warning(f"SESSION不符合Base64模式: {cleaned_session[:50]}...")
             return False
         
-        # 检查长度是否符合Base64要求（4的倍数）
+        # 自动修复长度问题（Base64长度必须是4的倍数）
         if len(cleaned_session) % 4 != 0:
-            self.logger.warning(f"SESSION长度不是4的倍数: {len(cleaned_session)}")
-            return False
+            self.logger.warning(f"SESSION长度不是4的倍数: {len(cleaned_session)}，尝试自动修复...")
+            # 计算需要添加的等号数量
+            padding_needed = 4 - (len(cleaned_session) % 4)
+            if padding_needed <= 2:  # Base64最多只能有2个等号
+                cleaned_session += '=' * padding_needed
+                self.logger.info(f"SESSION已自动修复，添加了{padding_needed}个等号")
+            else:
+                self.logger.warning(f"SESSION长度问题无法自动修复: 需要添加{padding_needed}个等号")
+                return False
         
         # 尝试解码以验证格式
         try:
