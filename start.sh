@@ -1,7 +1,7 @@
 #!/bin/bash
 # TG-Content-Bot-Pro 启动脚本
 # 直接运行: ./start.sh
-# 后台运行: nohup ./start.sh > logs/bot.log 2>&1 &
+# 后台运行: nohup ./start.sh > bot.log 2>&1 &
 
 # 获取脚本所在目录
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -9,23 +9,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # 切换到脚本目录
 cd "$SCRIPT_DIR"
 
-# 颜色定义
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-# 打印函数
-print_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
-print_success() { echo -e "${GREEN}[✓]${NC} $1"; }
-print_warning() { echo -e "${YELLOW}[!]${NC} $1"; }
-print_error() { echo -e "${RED}[✗]${NC} $1"; }
-
 # 检查环境变量
 check_env_variables() {
-    print_info "检查环境变量配置"
-    
     # 检查必需的环境变量
     missing_vars=()
     
@@ -48,7 +33,6 @@ check_env_variables() {
     # 如果系统环境变量不完整，检查.env文件
     if [ ${#missing_vars[@]} -gt 0 ]; then
         if [ -f ".env" ]; then
-            print_info "从 .env 文件加载环境变量..."
             # 逐行读取.env文件
             while IFS= read -r line || [[ -n "$line" ]]; do
                 # 跳过注释和空行
@@ -91,15 +75,14 @@ check_env_variables() {
     fi
     
     if [ ${#missing_vars[@]} -gt 0 ]; then
-        print_error "缺少必需的环境变量: ${missing_vars[*]}"
+        echo "错误: 缺少必需的环境变量: ${missing_vars[*]}"
+        echo "请配置环境变量后重新运行此脚本"
         echo ""
-        print_info "请通过以下方式之一配置环境变量："
-        echo ""
-        print_info "方式一：创建 .env 文件"
+        echo "方式一：创建 .env 文件"
         echo "  cp .env.example .env"
         echo "  nano .env  # 编辑配置"
         echo ""
-        print_info "方式二：设置系统环境变量"
+        echo "方式二：设置系统环境变量"
         echo "  export API_ID=your_api_id"
         echo "  export API_HASH=your_api_hash"
         echo "  export BOT_TOKEN=your_bot_token"
@@ -108,51 +91,32 @@ check_env_variables() {
         return 1
     fi
     
-    print_success "环境变量配置检查通过"
     return 0
 }
 
-# 检测系统类型
-detect_system() {
-    print_info "检测系统类型"
+# 主程序
+main() {
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🤖 TG-Content-Bot-Pro 启动脚本"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
     
-    if [ -f /etc/os-release ]; then
-        . /etc/os-release
-        OS=$NAME
-        VER=$VERSION_ID
-        print_success "系统: $OS $VER"
-    elif command_exists lsb_release; then
-        OS=$(lsb_release -si)
-        VER=$(lsb_release -sr)
-        print_success "系统: $OS $VER"
-    elif [ -f /etc/lsb-release ]; then
-        . /etc/lsb-release
-        OS=$DISTRIB_ID
-        VER=$DISTRIB_RELEASE
-        print_success "系统: $OS $VER"
-    elif [ -f /etc/debian_version ]; then
-        OS=Debian
-        VER=$(cat /etc/debian_version)
-        print_success "系统: $OS $VER"
-    elif [ -f /etc/redhat-release ]; then
-        OS=$(cat /etc/redhat-release | cut -d' ' -f1)
-        print_success "系统: $OS"
-    elif command_exists apk; then
-        OS=Alpine
-        VER=$(cat /etc/alpine-release 2>/dev/null || echo "unknown")
-        print_success "系统: $OS $VER"
-    else
-        OS=$(uname -s)
-        VER=$(uname -r)
-        print_warning "未知系统: $OS $VER"
+    # 检查环境变量
+    if ! check_env_variables; then
+        exit 1
     fi
-}
-
-# 测试 MongoDB 连接
-test_mongodb_connection() {
-    print_info "测试 MongoDB 连接"
     
-    cat > /tmp/test_mongo.py << 'EOF'
+    # 激活虚拟环境（如果存在）
+    if [ -f "venv/bin/activate" ]; then
+        source venv/bin/activate
+        echo "✅ 虚拟环境已激活"
+    else
+        echo "⚠️  未找到虚拟环境，使用系统Python"
+    fi
+    
+    # 测试 MongoDB 连接
+    echo "🔍 测试数据库连接..."
+    cat > /tmp/test_mongo.py << 'EOF_TEST'
 import sys
 import os
 from pymongo import MongoClient
@@ -177,53 +141,20 @@ except ConnectionFailure as e:
 except Exception as e:
     print(f"ERROR: {e}")
     sys.exit(1)
-EOF
+EOF_TEST
     
     if python /tmp/test_mongo.py 2>&1 | grep -q "SUCCESS"; then
-        print_success "MongoDB 连接成功"
+        echo "✅ 数据库连接成功"
         rm -f /tmp/test_mongo.py
-        return 0
     else
-        print_error "MongoDB 连接失败"
+        echo "❌ 数据库连接失败"
         echo "请检查 MONGO_DB 配置是否正确"
         rm -f /tmp/test_mongo.py
-        return 1
-    fi
-}
-
-# 主程序
-main() {
-    echo ""
-    echo -e "${BLUE}╔════════════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║     TG-Content-Bot-Pro 启动脚本                ║${NC}"
-    echo -e "${BLUE}╚════════════════════════════════════════════════╝${NC}"
-    echo ""
-    
-    # 检测系统类型
-    detect_system
-    
-    # 检查环境变量
-    if ! check_env_variables; then
-        exit 1
-    fi
-    
-    # 激活虚拟环境（如果存在）
-    if [ -f "venv/bin/activate" ]; then
-        source venv/bin/activate
-        print_success "虚拟环境已激活"
-    else
-        print_warning "未找到虚拟环境，使用系统Python"
-    fi
-    
-    # 测试 MongoDB 连接
-    if ! test_mongodb_connection; then
         exit 1
     fi
     
     echo ""
-    print_success "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    print_success "  启动机器人..."
-    print_success "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🚀 启动机器人..."
     echo ""
     
     # 启动机器人
