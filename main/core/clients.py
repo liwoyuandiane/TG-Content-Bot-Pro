@@ -39,9 +39,15 @@ class ClientManager:
         proxy_host = os.getenv('TELEGRAM_PROXY_HOST')
         proxy_port = os.getenv('TELEGRAM_PROXY_PORT')
         
-        # 检查代理认证信息
+        # 检查代理认证信息（使用settings配置）
         proxy_username = settings.TELEGRAM_PROXY_USERNAME
         proxy_password = settings.TELEGRAM_PROXY_PASSWORD
+        
+        # 如果环境变量中没有代理配置，尝试从settings中获取
+        if not (proxy_scheme and proxy_host and proxy_port):
+            # 注意：这里我们不从settings中获取代理配置，因为代理配置应该通过环境变量设置
+            # 这样可以更容易地在不同环境中切换代理配置
+            pass
         
         if proxy_scheme and proxy_host and proxy_port:
             try:
