@@ -232,7 +232,29 @@ class ClientManager:
         """验证SESSION格式"""
         if not session_string or len(session_string) < 10:
             return False
-        return True
+        
+        # 清理字符串，移除所有非base64字符
+        import re
+        cleaned_session = re.sub(r'[^A-Za-z0-9+/=]', '', session_string)
+        
+        # 检查是否符合基本的Base64模式
+        if not re.match(r'^[A-Za-z0-9+/]*={0,2}$', cleaned_session):
+            self.logger.warning(f"SESSION不符合Base64模式: {cleaned_session[:50]}...")
+            return False
+        
+        # 检查长度是否符合Base64要求（4的倍数）
+        if len(cleaned_session) % 4 != 0:
+            self.logger.warning(f"SESSION长度不是4的倍数: {len(cleaned_session)}")
+            return False
+        
+        # 尝试解码以验证格式
+        try:
+            import base64
+            base64.b64decode(cleaned_session)
+            return True
+        except Exception as e:
+            self.logger.warning(f"SESSION解码失败: {e}")
+            return False
     
     async def stop_clients(self):
         """停止所有客户端"""
