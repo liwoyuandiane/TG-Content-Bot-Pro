@@ -191,10 +191,10 @@ class ClientManager:
             if settings.SESSION:
                 # 验证SESSION格式并获取修正后的值
                 corrected_session = self._validate_and_fix_session(settings.SESSION)
+                # 即使验证失败，也尝试使用原始SESSION
                 if not corrected_session:
-                    logger.warning("SESSION格式无效，Userbot将以有限功能运行")
-                    self.userbot = None
-                    return
+                    logger.warning("SESSION验证失败，将使用原始SESSION尝试初始化")
+                    corrected_session = settings.SESSION
                 
                 # 只在SESSION被修正时更新配置
                 if corrected_session != settings.SESSION:
@@ -244,13 +244,19 @@ class ClientManager:
         Returns:
             修正后的SESSION字符串，如果验证失败则返回None
         """
-        if not session_string or len(session_string) < 10:
+        if not session_string:
             return None
         
         # 对于Pyrogram SESSION，直接返回原字符串（不做严格验证）
         # Pyrogram SESSION格式与Telethon不同，可能包含特殊字符
         if session_string.startswith("1") or session_string.startswith("2") or session_string.startswith("3"):
             self.logger.info("检测到Pyrogram SESSION格式，跳过严格验证")
+            return session_string
+        
+        # 对于其他SESSION，至少需要10个字符
+        if len(session_string) < 10:
+            self.logger.warning(f"SESSION长度不足: {len(session_string)} 字符")
+            # 即使长度不足，也返回原始SESSION以供尝试
             return session_string
         
         # 清理字符串，移除所有非base64字符
@@ -272,7 +278,7 @@ class ClientManager:
         # 验证是否符合Base64模式
         if not re.match(r'^[A-Za-z0-9+/]*={0,2}$', cleaned_session):
             self.logger.warning(f"SESSION不符合Base64模式: {cleaned_session[:50]}...")
-            # 即使格式不完全匹配，也返回清理后的SESSION以供尝试
+            # 即使格式不完全匹配，也返回原始SESSION以供尝试
             return session_string
         
         # 尝试解码以验证格式
@@ -311,9 +317,10 @@ class ClientManager:
         """刷新Userbot SESSION"""
         try:
             corrected_session = self._validate_and_fix_session(new_session)
+            # 即使验证失败，也尝试使用原始SESSION
             if not corrected_session:
-                logger.error("新SESSION格式无效")
-                return False
+                logger.warning("SESSION验证失败，将使用原始SESSION尝试初始化")
+                corrected_session = new_session
             
             # 停止当前userbot
             if self.userbot:
