@@ -202,7 +202,8 @@ class ClientManager:
                         'bot', 
                         settings.API_ID, 
                         settings.API_HASH,
-                        proxy=telethon_proxy
+                        proxy=telethon_proxy,
+                        connection_retries=5
                     )
                 elif len(telethon_proxy) >= 5 and telethon_proxy[0] in ['socks5', 'socks4']:
                     # SOCKS代理带认证
@@ -211,7 +212,8 @@ class ClientManager:
                         'bot', 
                         settings.API_ID, 
                         settings.API_HASH,
-                        proxy=telethon_proxy
+                        proxy=telethon_proxy,
+                        connection_retries=5
                     )
                 elif len(telethon_proxy) >= 3:
                     # 不带认证的代理
@@ -220,7 +222,8 @@ class ClientManager:
                         'bot', 
                         settings.API_ID, 
                         settings.API_HASH,
-                        proxy=telethon_proxy
+                        proxy=telethon_proxy,
+                        connection_retries=5
                     )
                 else:
                     # 默认情况
@@ -229,10 +232,11 @@ class ClientManager:
                         'bot', 
                         settings.API_ID, 
                         settings.API_HASH,
-                        proxy=telethon_proxy
+                        proxy=telethon_proxy,
+                        connection_retries=5
                     )
             else:
-                self.bot = TelegramClient('bot', settings.API_ID, settings.API_HASH)
+                self.bot = TelegramClient('bot', settings.API_ID, settings.API_HASH, connection_retries=5)
             
             logger.info("Telethon bot客户端初始化完成")
         except Exception as e:

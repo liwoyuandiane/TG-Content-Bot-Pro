@@ -102,9 +102,12 @@ async def startup():
     else:
         logger.error("❌ Bot客户端未初始化！")
     
-    # 设置机器人命令
+    # 设置机器人命令（确保客户端已启动）
     try:
-        await setup_commands()
+        if client_manager.pyrogram_bot and client_manager.pyrogram_bot.is_connected:
+            await setup_commands()
+        else:
+            logger.warning("Pyrogram客户端未连接，跳过命令设置")
     except Exception as e:
         logger.error(f"设置机器人命令失败: {e}", exc_info=True)
         logger.warning("机器人命令设置失败，但应用将继续运行")
