@@ -16,6 +16,7 @@ def load_env_file():
             'API_ID', 'API_HASH', 'BOT_TOKEN', 'AUTH', 'MONGO_DB',
             'FORCESUB', 'SESSION', 'TELEGRAM_PROXY_SCHEME', 
             'TELEGRAM_PROXY_HOST', 'TELEGRAM_PROXY_PORT',
+            'TELEGRAM_PROXY_USERNAME', 'TELEGRAM_PROXY_PASSWORD',
             'ENCRYPTION_KEY'
         ]
         
