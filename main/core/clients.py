@@ -106,8 +106,19 @@ class ClientManager:
         
         # 如果有认证信息，添加到配置中
         if 'username' in proxy_config and 'password' in proxy_config:
-            pyrogram_proxy_config['username'] = proxy_config['username']
-            pyrogram_proxy_config['password'] = proxy_config['password']
+            # Pyrogram可能不支持HTTP代理的用户名/密码认证
+            # 尝试使用URL格式的代理配置
+            if proxy_config['scheme'] in ['http', 'https']:
+                pyrogram_proxy_config = {
+                    'scheme': proxy_config['scheme'],
+                    'hostname': proxy_config['hostname'],
+                    'port': proxy_config['port'],
+                    'username': proxy_config['username'],
+                    'password': proxy_config['password']
+                }
+            else:
+                pyrogram_proxy_config['username'] = proxy_config['username']
+                pyrogram_proxy_config['password'] = proxy_config['password']
         
         return pyrogram_proxy_config
     
@@ -452,7 +463,13 @@ class ClientManager:
             
             # 尝试解码以验证格式
             import base64
-            base64.b64decode(cleaned_session)
+            decoded = base64.b64decode(cleaned_session)
+            
+            # 检查解码后的数据长度是否合理（通常SESSION数据应该有一定的最小长度）
+            if len(decoded) < 100:
+                self.logger.warning(f"SESSION解码后数据长度过短: {len(decoded)} 字节")
+                return None
+                
             self.logger.info("SESSION验证通过")
             return cleaned_session
         except Exception as e:
