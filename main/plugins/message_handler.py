@@ -18,6 +18,8 @@ class MessageHandlerPlugin(BasePlugin):
     
     def __init__(self):
         super().__init__("message_handler")
+        # 跟踪正在进行会话的用户，避免干扰批量下载等交互式命令
+        self.users_in_conversation = set()
     
     async def on_load(self):
         """插件加载时注册事件处理器"""
@@ -38,6 +40,13 @@ class MessageHandlerPlugin(BasePlugin):
         
         self.logger.info("消息链接处理插件事件处理器已移除")
     
+    def mark_user_in_conversation(self, user_id: int, in_conversation: bool = True):
+        """标记用户是否在会话中"""
+        if in_conversation:
+            self.users_in_conversation.add(user_id)
+        else:
+            self.users_in_conversation.discard(user_id)
+    
     async def _handle_message_link(self, event):
         """处理消息链接"""
         user_id = event.sender_id
@@ -45,6 +54,22 @@ class MessageHandlerPlugin(BasePlugin):
         
         # 检查用户是否授权
         if not await user_service.is_user_authorized(user_id):
+            return
+        
+        # 检查用户是否在其他会话中（如批量下载）
+        if user_id in self.users_in_conversation:
+            self.logger.debug(f"用户 {user_id} 在会话中，跳过自动处理")
+            return
+        
+        # 从batch插件获取是否在批量任务中
+        from .batch import batch_plugin
+        if user_id in batch_plugin.batch_users:
+            self.logger.debug(f"用户 {user_id} 在批量任务中，跳过自动处理")
+            return
+        
+        # 检查是否是回复消息（可能是对话的一部分）
+        if event.is_reply:
+            self.logger.debug(f"用户 {user_id} 发送的是回复消息，跳过自动处理")
             return
         
         # 检查是否包含 Telegram 链接
