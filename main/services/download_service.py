@@ -58,7 +58,8 @@ class DownloadService:
         """
         # 检查 userbot 是否可用
         if userbot is None:
-            await client.edit_message_text(sender, edit_id, "❌ 未配置 SESSION，无法访问受限内容\n\n使用 /addsession 添加 SESSION")
+            if edit_id > 0:
+                await client.edit_message_text(sender, edit_id, "❌ 未配置 SESSION，无法访问受限内容\n\n使用 /addsession 添加 SESSION")
             return False
         
         edit = ""
@@ -83,23 +84,29 @@ class DownloadService:
                 msg = await userbot.get_messages(chat, msg_id)
                 if msg.media:
                     if msg.media == MessageMediaType.WEB_PAGE:
-                        edit = await client.edit_message_text(sender, edit_id, "克隆中...")
+                        if edit_id > 0:
+                            edit = await client.edit_message_text(sender, edit_id, "克隆中...")
                         if msg.text:
                             await client.send_message(sender, msg.text.markdown)
-                        await edit.delete()
+                        if edit_id > 0 and edit:
+                            await edit.delete()
                         return True
                 
                 if not msg.media:
                     if msg.text:
-                        edit = await client.edit_message_text(sender, edit_id, "克隆中...")
+                        if edit_id > 0:
+                            edit = await client.edit_message_text(sender, edit_id, "克隆中...")
                         await client.send_message(sender, msg.text.markdown)
-                        await edit.delete()
+                        if edit_id > 0 and edit:
+                            await edit.delete()
                         return True
                     else:
-                        await client.edit_message_text(sender, edit_id, "❌ 消息为空")
+                        if edit_id > 0:
+                            await client.edit_message_text(sender, edit_id, "❌ 消息为空")
                         return False
                 
-                edit = await client.edit_message_text(sender, edit_id, "尝试下载...")
+                if edit_id > 0:
+                    edit = await client.edit_message_text(sender, edit_id, "尝试下载...")
                 
                 # 获取文件大小并检查流量限制
                 file_size = self._get_file_size(msg)
@@ -107,7 +114,8 @@ class DownloadService:
                 # 检查流量限制
                 can_download, limit_msg = await self.traffic.check_traffic_limit(sender, file_size)
                 if not can_download:
-                    await client.edit_message_text(sender, edit_id, f"❌ {limit_msg}\n\n使用 /traffic 查看流量使用情况")
+                    if edit_id > 0:
+                        await client.edit_message_text(sender, edit_id, f"❌ {limit_msg}\n\n使用 /traffic 查看流量使用情况")
                     await self.db.add_download(sender, msg_link, msg_id, str(chat), "限制", file_size, "failed")
                     return False
                 
@@ -123,12 +131,14 @@ class DownloadService:
                 )
                 
                 if not file or not os.path.exists(file):
-                    await client.edit_message_text(sender, edit_id, "❌ 下载失败")
+                    if edit_id > 0:
+                        await client.edit_message_text(sender, edit_id, "❌ 下载失败")
                     await self.db.add_download(sender, msg_link, msg_id, str(chat), "download_error", file_size, "failed")
                     return False
                     
                 logger.info(f"下载完成: {file}")
-                await client.edit_message_text(sender, edit_id, '准备上传！')
+                if edit_id > 0:
+                    await client.edit_message_text(sender, edit_id, '准备上传！')
                 
                 caption = None
                 if msg.caption is not None:
@@ -182,7 +192,8 @@ class DownloadService:
                         )
                     )
                 elif msg.media == MessageMediaType.PHOTO:
-                    await edit.edit("上传照片中...")
+                    if edit_id > 0 and edit:
+                        await edit.edit("上传照片中...")
                     await telethon_bot.send_file(sender, file, caption=caption)
                 else:
                     thumb_path = self._get_thumbnail(sender)
@@ -208,12 +219,14 @@ class DownloadService:
                 await self.traffic.add_traffic(sender, file_size, file_size)
                 await self.db.add_download(sender, msg_link, msg_id, str(chat), media_type, file_size, "success")
                 
-                await edit.delete()
+                if edit_id > 0 and edit:
+                    await edit.delete()
                 return True
                 
             except (ChannelBanned, ChannelInvalid, ChannelPrivate, ChatIdInvalid, ChatInvalid) as e:
                 logger.warning(f"频道访问错误: {e}")
-                await client.edit_message_text(sender, edit_id, "您加入该频道了吗？")
+                if edit_id > 0:
+                    await client.edit_message_text(sender, edit_id, "您加入该频道了吗？")
                 await self.db.add_download(sender, msg_link, msg_id, str(chat), "channel_error", 0, "failed")
                 return False
             except PeerIdInvalid:
@@ -234,7 +247,8 @@ class DownloadService:
                     )
                 else:
                     error_msg = self._translate_error(str(e))
-                    await client.edit_message_text(sender, edit_id, f'保存失败: `{msg_link}`\n\n错误: {error_msg}')
+                    if edit_id > 0:
+                        await client.edit_message_text(sender, edit_id, f'保存失败: `{msg_link}`\n\n错误: {error_msg}')
                     await self.db.add_download(sender, msg_link, msg_id, str(chat), "error", file_size, "failed")
                     await self._cleanup_file(file)
                     return False

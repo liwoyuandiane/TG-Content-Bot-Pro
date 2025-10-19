@@ -189,11 +189,17 @@ class ClientManager:
                     logger.info("从会话服务加载SESSION成功")
             
             if settings.SESSION:
-                # 验证SESSION格式
-                if not self._validate_session(settings.SESSION):
+                # 验证SESSION格式并获取修正后的值
+                corrected_session = self._validate_and_fix_session(settings.SESSION)
+                if not corrected_session:
                     logger.warning("SESSION格式无效，Userbot将以有限功能运行")
                     self.userbot = None
                     return
+                
+                # 只在SESSION被修正时更新配置
+                if corrected_session != settings.SESSION:
+                    settings.SESSION = corrected_session
+                    logger.info("SESSION已自动修复")
                 
                 # 掩码敏感信息用于日志
                 masked_session = security_manager.mask_sensitive_data(settings.SESSION, 15)
@@ -229,10 +235,17 @@ class ClientManager:
             logger.error(f"Userbot启动失败: {e}")
             self.userbot = None
     
-    def _validate_session(self, session_string: str) -> bool:
-        """验证SESSION格式并自动修复填充"""
+    def _validate_and_fix_session(self, session_string: str) -> Optional[str]:
+        """验证SESSION格式并返回修正后的SESSION
+        
+        Args:
+            session_string: 原始SESSION字符串
+            
+        Returns:
+            修正后的SESSION字符串，如果验证失败则返回None
+        """
         if not session_string or len(session_string) < 10:
-            return False
+            return None
         
         # 清理字符串，移除所有非base64字符
         import re
@@ -250,23 +263,20 @@ class ClientManager:
             cleaned_session += '=' * padding_needed
             self.logger.info(f"SESSION已自动修复填充，添加了{padding_needed}个等号")
         
-        # 更新配置中的SESSION为修复后的值
-        settings.SESSION = cleaned_session
-        
         # 验证是否符合Base64模式
         if not re.match(r'^[A-Za-z0-9+/]*={0,2}$', cleaned_session):
             self.logger.warning(f"SESSION不符合Base64模式: {cleaned_session[:50]}...")
-            return False
+            return None
         
         # 尝试解码以验证格式
         try:
             import base64
             base64.b64decode(cleaned_session)
             self.logger.info("SESSION验证通过")
-            return True
+            return cleaned_session
         except Exception as e:
             self.logger.warning(f"SESSION解码失败: {e}")
-            return False
+            return None
     
     async def stop_clients(self):
         """停止所有客户端"""
@@ -292,7 +302,8 @@ class ClientManager:
     async def refresh_userbot_session(self, new_session: str) -> bool:
         """刷新Userbot SESSION"""
         try:
-            if not self._validate_session(new_session):
+            corrected_session = self._validate_and_fix_session(new_session)
+            if not corrected_session:
                 logger.error("新SESSION格式无效")
                 return False
             
@@ -301,7 +312,7 @@ class ClientManager:
                 await self.userbot.stop()
             
             # 更新配置
-            settings.SESSION = new_session
+            settings.SESSION = corrected_session
             
             # 重新初始化userbot
             await self._init_userbot()
