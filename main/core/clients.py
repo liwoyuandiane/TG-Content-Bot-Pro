@@ -230,35 +230,39 @@ class ClientManager:
             self.userbot = None
     
     def _validate_session(self, session_string: str) -> bool:
-        """验证SESSION格式"""
+        """验证SESSION格式并自动修复填充"""
         if not session_string or len(session_string) < 10:
             return False
         
         # 清理字符串，移除所有非base64字符
         import re
-        cleaned_session = re.sub(r'[^A-Za-z0-9+/=]', '', session_string)
+        cleaned_session = re.sub(r'[^A-Za-z0-9+/=_-]', '', session_string)
         
-        # 检查是否符合基本的Base64模式
+        # URL-safe base64 转换为标准 base64
+        cleaned_session = cleaned_session.replace('-', '+').replace('_', '/')
+        
+        # 移除已有的等号，重新计算填充
+        cleaned_session = cleaned_session.rstrip('=')
+        
+        # 自动添加正确的填充（Base64长度必须是4的倍数）
+        padding_needed = (4 - len(cleaned_session) % 4) % 4
+        if padding_needed > 0:
+            cleaned_session += '=' * padding_needed
+            self.logger.info(f"SESSION已自动修复填充，添加了{padding_needed}个等号")
+        
+        # 更新配置中的SESSION为修复后的值
+        settings.SESSION = cleaned_session
+        
+        # 验证是否符合Base64模式
         if not re.match(r'^[A-Za-z0-9+/]*={0,2}$', cleaned_session):
             self.logger.warning(f"SESSION不符合Base64模式: {cleaned_session[:50]}...")
             return False
-        
-        # 自动修复长度问题（Base64长度必须是4的倍数）
-        if len(cleaned_session) % 4 != 0:
-            self.logger.warning(f"SESSION长度不是4的倍数: {len(cleaned_session)}，尝试自动修复...")
-            # 计算需要添加的等号数量
-            padding_needed = 4 - (len(cleaned_session) % 4)
-            if padding_needed <= 2:  # Base64最多只能有2个等号
-                cleaned_session += '=' * padding_needed
-                self.logger.info(f"SESSION已自动修复，添加了{padding_needed}个等号")
-            else:
-                self.logger.warning(f"SESSION长度问题无法自动修复: 需要添加{padding_needed}个等号")
-                return False
         
         # 尝试解码以验证格式
         try:
             import base64
             base64.b64decode(cleaned_session)
+            self.logger.info("SESSION验证通过")
             return True
         except Exception as e:
             self.logger.warning(f"SESSION解码失败: {e}")
