@@ -180,13 +180,73 @@ check_dependencies() {
                 [Yy]* ) 
                     print_info "正在安装依赖..."
                     
-                    # 检测包管理器
+                    # 检测包管理器和系统类型
                     if command_exists apt; then
+                        print_info "检测到基于 Debian/Ubuntu 的系统"
                         sudo apt update && sudo apt install -y ${missing_packages[*]}
                     elif command_exists dnf; then
+                        print_info "检测到基于 Fedora/RHEL 的系统"
                         sudo dnf install -y ${missing_packages[*]}
                     elif command_exists yum; then
+                        print_info "检测到基于 CentOS/RHEL 的系统"
                         sudo yum install -y ${missing_packages[*]}
+                    elif command_exists apk; then
+                        print_info "检测到 Alpine Linux 系统"
+                        # Alpine Linux 需要特殊处理包名
+                        alpine_packages=()
+                        for pkg in "${missing_packages[@]}"; do
+                            case $pkg in
+                                "python3")
+                                    alpine_packages+=("python3")
+                                    ;;
+                                "python3-pip")
+                                    alpine_packages+=("py3-pip")
+                                    ;;
+                                "python3-venv")
+                                    alpine_packages+=("python3-dev")
+                                    ;;
+                                "git")
+                                    alpine_packages+=("git")
+                                    ;;
+                                "ffmpeg")
+                                    alpine_packages+=("ffmpeg")
+                                    ;;
+                                *)
+                                    alpine_packages+=("$pkg")
+                                    ;;
+                            esac
+                        done
+                        sudo apk update && sudo apk add --no-cache ${alpine_packages[*]}
+                    elif command_exists pacman; then
+                        print_info "检测到 Arch Linux 系统"
+                        # Arch Linux 需要特殊处理包名
+                        arch_packages=()
+                        for pkg in "${missing_packages[@]}"; do
+                            case $pkg in
+                                "python3")
+                                    arch_packages+=("python")
+                                    ;;
+                                "python3-pip")
+                                    arch_packages+=("python-pip")
+                                    ;;
+                                "python3-venv")
+                                    arch_packages+=("python")
+                                    ;;
+                                "git")
+                                    arch_packages+=("git")
+                                    ;;
+                                "ffmpeg")
+                                    arch_packages+=("ffmpeg")
+                                    ;;
+                                *)
+                                    arch_packages+=("$pkg")
+                                    ;;
+                            esac
+                        done
+                        sudo pacman -Sy --noconfirm ${arch_packages[*]}
+                    elif command_exists zypper; then
+                        print_info "检测到 openSUSE 系统"
+                        sudo zypper refresh && sudo zypper install -y ${missing_packages[*]}
                     else
                         print_error "不支持的包管理器，请手动安装: ${missing_packages[*]}"
                         exit 1
@@ -241,6 +301,13 @@ clone_repository() {
 setup_python_environment() {
     print_step "设置 Python 环境"
     
+    # 检查系统类型以进行特殊处理
+    local is_alpine=false
+    if command_exists apk; then
+        is_alpine=true
+        print_info "检测到 Alpine Linux 系统"
+    fi
+    
     # 检查是否已存在虚拟环境
     if [ -d "venv" ]; then
         print_info "检测到已存在的虚拟环境"
@@ -261,14 +328,30 @@ setup_python_environment() {
         else
             print_warning "虚拟环境损坏，重新创建..."
             rm -rf venv
-            python3 -m venv venv
+            if [ "$is_alpine" = true ]; then
+                # Alpine Linux 需要特殊处理
+                python3 -m venv venv --without-pip
+                source venv/bin/activate
+                # 在 Alpine 上重新安装 pip
+                curl -sSL https://bootstrap.pypa.io/get-pip.py | python3
+            else
+                python3 -m venv venv
+            fi
             source venv/bin/activate
             pip install --upgrade pip >/dev/null 2>&1
             pip install -r requirements.txt
         fi
     else
         print_info "创建新的虚拟环境..."
-        python3 -m venv venv
+        if [ "$is_alpine" = true ]; then
+            # Alpine Linux 需要特殊处理
+            python3 -m venv venv --without-pip
+            source venv/bin/activate
+            # 在 Alpine 上重新安装 pip
+            curl -sSL https://bootstrap.pypa.io/get-pip.py | python3
+        else
+            python3 -m venv venv
+        fi
         source venv/bin/activate
         pip install --upgrade pip >/dev/null 2>&1
         pip install -r requirements.txt

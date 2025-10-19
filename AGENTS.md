@@ -12,19 +12,19 @@ SaveRestrictedContentBot (TG-Content-Bot-Pro) is a Telegram bot for cloning mess
 
 ```bash
 # Using Docker (recommended)
-cd SaveRestrictedContentBot
+cd TG-Content-Bot-Pro
 docker-compose up -d
 docker-compose logs -f
 
 # Manual deployment
-cd SaveRestrictedContentBot
+cd TG-Content-Bot-Pro
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 python3 -m main
 
 # Using start script
-cd SaveRestrictedContentBot
+cd TG-Content-Bot-Pro
 ./start.sh
 ```
 
@@ -32,15 +32,15 @@ cd SaveRestrictedContentBot
 
 ```bash
 # Generate Pyrogram session string (interactive)
-cd SaveRestrictedContentBot
+cd TG-Content-Bot-Pro
 python3 get_session.py
 
 # Initialize database
-cd SaveRestrictedContentBot
+cd TG-Content-Bot-Pro
 python3 init_database.py
 
 # Run installation script
-cd SaveRestrictedContentBot
+cd TG-Content-Bot-Pro
 bash install.sh
 ```
 
@@ -85,16 +85,23 @@ Plugins auto-load from `main/plugins/` directory:
 - `main/core/plugin_manager.py` dynamically imports each plugin
 - Plugins register event handlers using decorators from Telethon/Pyrogram
 
+Key plugin files:
+- `message_handler.py` - Handles message link processing
+- `batch.py` - Implements batch download functionality
+- `auth_commands.py` - Authentication-related commands
+- `traffic_commands.py` - Traffic monitoring commands
+- `session_commands.py` - Session management commands
+
 ### Core Message Flow
 
-1. User sends message link → `frontend.py` or `start.py` handles request
-2. Link parsing → `helpers.py:get_link()` extracts chat_id and msg_id
-3. Message retrieval → `pyroplug.py:get_msg()` downloads from source channel
-4. Traffic check → `database.py:check_traffic_limit()` validates user quota
+1. User sends message link → `message_handler.py` processes the request
+2. Link parsing → `utils/media_utils.py:get_link()` extracts chat_id and msg_id
+3. Message retrieval → `services/download_service.py:download_message()` downloads from source channel
+4. Traffic check → `services/traffic_service.py:check_traffic_limit()` validates user quota
 5. Upload to user → Uses Pyrogram or Telethon depending on media type/size
 6. Cleanup → Downloaded files are removed after upload
 
-### File Upload Strategy (`main/plugins/pyroplug.py:get_msg()`)
+### File Upload Strategy (`main/services/download_service.py`)
 
 Implements fallback logic:
 - Tries Pyrogram upload first
@@ -114,7 +121,7 @@ Implements fallback logic:
 - **settings**: traffic limit configuration
 - **sessions**: encrypted user session storage
 
-### Task Queue & Rate Limiting (`main/core/task_queue.py`, `main/core/rate_limiter.py`)
+### Task Queue & Rate Limiting (`main/services/download_task_manager.py`, `main/core/rate_limiter.py`)
 
 Three-component system:
 1. **TaskQueue**: Async queue with configurable concurrent workers for parallel processing
@@ -128,7 +135,7 @@ Three-component system:
 
 ### Message Link Formats
 
-Supports (`main/plugins/helpers.py`):
+Supports (`utils/media_utils.py`):
 - Public channels: `t.me/channel/msgid`
 - Private channels: `t.me/c/chatid/msgid`
 - Bot channels: `t.me/b/chatid/msgid`
@@ -165,9 +172,9 @@ Default limits (configurable via `/setlimit`):
 - Single file limit: 100MB
 - Enabled by default
 
-Traffic is checked before each download (`main/plugins/pyroplug.py`):
+Traffic is checked before each download (`services/download_service.py`):
 - Gets file size from message metadata
-- Calls `db.check_traffic_limit(sender, file_size)`
+- Calls `traffic_service.check_traffic_limit(sender, file_size)`
 - Rejects download if over quota with informative message
 - Records traffic on successful upload
 
@@ -226,12 +233,11 @@ main/
 │   ├── clients.py       # Telegram client management
 │   ├── database.py      # Database operations
 │   ├── plugin_manager.py # Plugin loading system
-│   ├── task_queue.py    # Task queue implementation
-│   └── rate_limiter.py  # Rate limiting logic
+│   └── base_plugin.py   # Base plugin class
 ├── plugins/             # Bot command plugins
-│   ├── frontend.py      # Message handling
+│   ├── message_handler.py # Message link processing
 │   ├── batch.py         # Batch download functionality
-│   ├── pyroplug.py      # Message retrieval and upload
+│   ├── auth_commands.py # Authentication commands
 │   └── ...              # Other command handlers
 ├── services/            # Business logic services
 ├── utils/               # Utility functions

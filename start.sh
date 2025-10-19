@@ -112,6 +112,42 @@ check_env_variables() {
     return 0
 }
 
+# 检测系统类型
+detect_system() {
+    print_info "检测系统类型"
+    
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        OS=$NAME
+        VER=$VERSION_ID
+        print_success "系统: $OS $VER"
+    elif command_exists lsb_release; then
+        OS=$(lsb_release -si)
+        VER=$(lsb_release -sr)
+        print_success "系统: $OS $VER"
+    elif [ -f /etc/lsb-release ]; then
+        . /etc/lsb-release
+        OS=$DISTRIB_ID
+        VER=$DISTRIB_RELEASE
+        print_success "系统: $OS $VER"
+    elif [ -f /etc/debian_version ]; then
+        OS=Debian
+        VER=$(cat /etc/debian_version)
+        print_success "系统: $OS $VER"
+    elif [ -f /etc/redhat-release ]; then
+        OS=$(cat /etc/redhat-release | cut -d' ' -f1)
+        print_success "系统: $OS"
+    elif command_exists apk; then
+        OS=Alpine
+        VER=$(cat /etc/alpine-release 2>/dev/null || echo "unknown")
+        print_success "系统: $OS $VER"
+    else
+        OS=$(uname -s)
+        VER=$(uname -r)
+        print_warning "未知系统: $OS $VER"
+    fi
+}
+
 # 测试 MongoDB 连接
 test_mongodb_connection() {
     print_info "测试 MongoDB 连接"
@@ -162,6 +198,9 @@ main() {
     echo -e "${BLUE}║     TG-Content-Bot-Pro 启动脚本                ║${NC}"
     echo -e "${BLUE}╚════════════════════════════════════════════════╝${NC}"
     echo ""
+    
+    # 检测系统类型
+    detect_system
     
     # 检查环境变量
     if ! check_env_variables; then
