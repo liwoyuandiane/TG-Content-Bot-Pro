@@ -128,11 +128,29 @@ class SessionPlugin(BasePlugin):
             # 保存 SESSION
             success = await session_service.save_session(event.sender_id, cleaned_session)
             if success:
-                await event.reply(
-                    "✅ SESSION 已保存到 MongoDB\n\n"
-                    "重启机器人后生效\n"
-                    "使用 /sessions 查看所有会话"
-                )
+                # 尝试动态刷新 userbot SESSION
+                try:
+                    from ..core.clients import client_manager
+                    refresh_success = await client_manager.refresh_userbot_session(cleaned_session)
+                    if refresh_success:
+                        await event.reply(
+                            "✅ SESSION 已保存并生效\n\n"
+                            "Userbot 客户端已自动更新，无需重启机器人\n"
+                            "使用 /sessions 查看所有会话"
+                        )
+                    else:
+                        await event.reply(
+                            "✅ SESSION 已保存到 MongoDB\n\n"
+                            "重启机器人后生效\n"
+                            "使用 /sessions 查看所有会话"
+                        )
+                except Exception as refresh_error:
+                    self.logger.error(f"动态刷新 SESSION 失败: {refresh_error}")
+                    await event.reply(
+                        "✅ SESSION 已保存到 MongoDB\n\n"
+                        "重启机器人后生效\n"
+                        "使用 /sessions 查看所有会话"
+                    )
             else:
                 await event.reply("❌ 保存失败，请稍后重试")
         

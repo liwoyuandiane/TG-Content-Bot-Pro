@@ -180,11 +180,12 @@ class ClientManager:
     async def _init_userbot(self):
         """初始化userbot客户端"""
         try:
-            # 尝试从会话服务获取SESSION
-            user_session = await self.session_svc.get_session(settings.AUTH)
-            if user_session:
-                settings.SESSION = user_session
-                logger.info("从会话服务加载SESSION成功")
+            # 如果没有设置SESSION，尝试从会话服务获取SESSION
+            if not settings.SESSION:
+                user_session = await self.session_svc.get_session(settings.AUTH)
+                if user_session:
+                    settings.SESSION = user_session
+                    logger.info("从会话服务加载SESSION成功")
             
             if settings.SESSION:
                 # 验证SESSION格式
@@ -261,23 +262,18 @@ class ClientManager:
                 logger.error("新SESSION格式无效")
                 return False
             
-            # 保存新SESSION
-            if await self.session_svc.save_session(settings.AUTH, new_session):
-                # 停止当前userbot
-                if self.userbot:
-                    await self.userbot.stop()
-                
-                # 更新配置
-                settings.SESSION = new_session
-                
-                # 重新初始化userbot
-                await self._init_userbot()
-                
-                logger.info("Userbot SESSION刷新成功")
-                return True
-            else:
-                logger.error("保存新SESSION失败")
-                return False
+            # 停止当前userbot
+            if self.userbot:
+                await self.userbot.stop()
+            
+            # 更新配置
+            settings.SESSION = new_session
+            
+            # 重新初始化userbot
+            await self._init_userbot()
+            
+            logger.info("Userbot SESSION刷新成功")
+            return True
         except Exception as e:
             logger.error(f"刷新Userbot SESSION时出错: {e}")
             return False
