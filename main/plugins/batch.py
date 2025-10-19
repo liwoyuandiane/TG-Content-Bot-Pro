@@ -71,10 +71,17 @@ class BatchPlugin(BasePlugin):
             await event.reply("您已经开始了一个批量任务，请等待它完成！")
             return
         
+        # 收集需要删除的消息ID
+        messages_to_delete = [event.id]  # 用户的/batch命令
+        
         async with client_manager.bot.conversation(event.chat_id) as conv:
-            await conv.send_message("请回复此消息，发送您想开始保存的消息链接。", buttons=Button.force_reply())
+            prompt1 = await conv.send_message("请回复此消息，发送您想开始保存的消息链接。", buttons=Button.force_reply())
+            messages_to_delete.append(prompt1.id)
+            
             try:
                 link_msg = await conv.get_reply()
+                messages_to_delete.append(link_msg.id)
+                
                 try:
                     link = get_link(link_msg.text)
                     if not link:
@@ -88,9 +95,12 @@ class BatchPlugin(BasePlugin):
                 await conv.send_message("等待响应超时！")
                 return conv.cancel()
             
-            await conv.send_message("请回复此消息，发送您想从给定消息开始保存的文件数量/范围。", buttons=Button.force_reply())
+            prompt2 = await conv.send_message("请回复此消息，发送您想从给定消息开始保存的文件数量/范围。", buttons=Button.force_reply())
+            messages_to_delete.append(prompt2.id)
+            
             try:
                 range_msg = await conv.get_reply()
+                messages_to_delete.append(range_msg.id)
             except Exception as e:
                 self.logger.error(f"获取范围时出错: {e}")
                 await conv.send_message("等待响应超时！")
@@ -109,26 +119,29 @@ class BatchPlugin(BasePlugin):
             
             # 直接运行批量下载（不通过任务队列）
             await self._run_batch(client_manager.userbot, client_manager.pyrogram_bot, 
-                                event.sender_id, link, value)
+                                event.sender_id, link, value, messages_to_delete)
             
             conv.cancel()
             self.batch_users.discard(event.sender_id)
     
     @handle_errors(default_return=False)
     async def _run_batch(self, userbot: Client, client: Client, sender: int, 
-                        link: str, range_count: int):
+                        link: str, range_count: int, messages_to_delete: list = None):
         """运行批量下载任务"""
         completed = 0
         failed = 0
+        progress_messages = []  # 收集进度消息ID
         
         for i in range(range_count):
             try:
                 if sender not in self.batch_users:
-                    await client.send_message(sender, f"批量任务已完成。\n✅ 成功: {completed}\n❌ 失败: {failed}")
+                    final_msg = await client.send_message(sender, f"批量任务已完成。\n✅ 成功: {completed}\n❌ 失败: {failed}")
+                    progress_messages.append(final_msg.id)
                     break
             except Exception as e:
                 self.logger.error(f"检查批量任务状态时出错: {e}")
-                await client.send_message(sender, f"批量任务已完成。\n✅ 成功: {completed}\n❌ 失败: {failed}")
+                final_msg = await client.send_message(sender, f"批量任务已完成。\n✅ 成功: {completed}\n❌ 失败: {failed}")
+                progress_messages.append(final_msg.id)
                 break
             
             try:
@@ -142,7 +155,8 @@ class BatchPlugin(BasePlugin):
                 
             except FloodWait as fw:
                 if fw.value > 299:
-                    await client.send_message(sender, f"由于洪水等待超过5分钟，取消批量任务。\n✅ 成功: {completed}\n❌ 失败: {failed}")
+                    final_msg = await client.send_message(sender, f"由于洪水等待超过5分钟，取消批量任务。\n✅ 成功: {completed}\n❌ 失败: {failed}")
+                    progress_messages.append(final_msg.id)
                     break
                 
                 # 等待FloodWait时间后重试
@@ -161,15 +175,34 @@ class BatchPlugin(BasePlugin):
             # 每5个文件或最后一批发送进度更新
             if (i + 1) % 5 == 0 or i == range_count - 1:
                 progress_pct = (completed + failed) * 100 // range_count
-                progress_msg = f"📊 进度: {completed + failed}/{range_count} ({progress_pct}%)\n✅ 成功: {completed}\n❌ 失败: {failed}"
+                progress_msg_text = f"📊 进度: {completed + failed}/{range_count} ({progress_pct}%)\n✅ 成功: {completed}\n❌ 失败: {failed}"
                 
                 try:
-                    await client.send_message(sender, progress_msg)
+                    progress_msg = await client.send_message(sender, progress_msg_text)
+                    progress_messages.append(progress_msg.id)
                 except Exception:
                     pass
         
-        final_msg = f"🎉 批量任务完成！\n✅ 成功: {completed}\n❌ 失败: {failed}\n📊 总计: {range_count}"
-        await client.send_message(sender, final_msg)
+        final_msg_text = f"🎉 批量任务完成！\n✅ 成功: {completed}\n❌ 失败: {failed}\n📊 总计: {range_count}"
+        final_msg = await client.send_message(sender, final_msg_text)
+        progress_messages.append(final_msg.id)
+        
+        # 延迟5秒后删除所有过程消息
+        await asyncio.sleep(5)
+        
+        try:
+            # 删除用户命令和对话消息
+            if messages_to_delete:
+                await client_manager.bot.delete_messages(sender, messages_to_delete)
+                self.logger.info(f"已删除 {len(messages_to_delete)} 条对话消息")
+            
+            # 删除进度和完成消息
+            if progress_messages:
+                await client.delete_messages(sender, progress_messages)
+                self.logger.info(f"已删除 {len(progress_messages)} 条进度消息")
+                
+        except Exception as e:
+            self.logger.error(f"删除消息时出错: {e}")
 
 
 # 创建插件实例并注册
