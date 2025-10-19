@@ -129,25 +129,20 @@ class ClientManager:
                         hostname,
                         port
                     )
-            # 对于HTTP代理，Telethon需要特殊处理
+            # 对于HTTP代理，使用字典格式以确保认证正确工作
             elif scheme in ['http', 'https']:
-                # Telethon的HTTP代理认证需要通过代理对象传递
                 if 'username' in self.proxy_config and 'password' in self.proxy_config:
-                    # 返回包含认证信息的元组 (协议, 主机, 端口, 用户名, 密码)
-                    return (
-                        'http',
-                        hostname,
-                        port,
-                        self.proxy_config['username'],
-                        self.proxy_config['password']
-                    )
+                    # 返回字典格式的代理配置
+                    return {
+                        'proxy_type': 'http',
+                        'addr': hostname,
+                        'port': port,
+                        'username': self.proxy_config['username'],
+                        'password': self.proxy_config['password']
+                    }
                 else:
-                    # 返回不包含认证信息的元组 (协议, 主机, 端口)
-                    return (
-                        'http',
-                        hostname,
-                        port
-                    )
+                    # 返回元组格式的代理配置
+                    return ('http', hostname, port)
         return None
     
     def _get_pyrogram_proxy(self) -> Optional[Dict[str, Any]]:
@@ -193,19 +188,18 @@ class ClientManager:
             
             # 创建Telethon客户端
             if telethon_proxy:
-                # 检查是否是带认证的代理
-                # 对于HTTP代理，如果包含用户名和密码（第4和第5个元素），则说明有认证
-                if len(telethon_proxy) >= 5 and telethon_proxy[0] == 'http':
-                    # 对于带认证的HTTP代理
-                    logger.info(f"使用带认证的HTTP代理: {telethon_proxy[1]}:{telethon_proxy[2]} with auth")
+                # 检查代理类型
+                if isinstance(telethon_proxy, dict):
+                    # 字典格式代理（HTTP代理推荐使用）
+                    logger.info(f"使用带认证的HTTP代理: {telethon_proxy['addr']}:{telethon_proxy['port']} with auth")
                     self.bot = TelegramClient(
                         'bot', 
                         settings.API_ID, 
                         settings.API_HASH,
                         proxy=telethon_proxy
                     )
-                elif len(telethon_proxy) >= 4 and telethon_proxy[0] in ['socks5', 'socks4']:
-                    # 对于带认证的SOCKS代理
+                elif len(telethon_proxy) >= 5 and telethon_proxy[0] in ['socks5', 'socks4']:
+                    # SOCKS代理带认证
                     logger.info(f"使用带认证的SOCKS代理: {telethon_proxy[1]}:{telethon_proxy[2]} with auth")
                     self.bot = TelegramClient(
                         'bot', 
@@ -213,9 +207,18 @@ class ClientManager:
                         settings.API_HASH,
                         proxy=telethon_proxy
                     )
-                else:
+                elif len(telethon_proxy) >= 3:
                     # 不带认证的代理
                     logger.info(f"使用代理: {telethon_proxy[1]}:{telethon_proxy[2]}")
+                    self.bot = TelegramClient(
+                        'bot', 
+                        settings.API_ID, 
+                        settings.API_HASH,
+                        proxy=telethon_proxy
+                    )
+                else:
+                    # 默认情况
+                    logger.info(f"使用代理: {telethon_proxy}")
                     self.bot = TelegramClient(
                         'bot', 
                         settings.API_ID, 
