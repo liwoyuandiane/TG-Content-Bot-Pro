@@ -31,7 +31,7 @@ check_env_variables() {
     fi
     
     # 如果系统环境变量不完整，检查.env文件
-    if [ ${#missing_vars[@]} -gt 0 ]; then
+    if [ ${#missing_vars[@]} -gt 0 ] || [ -z "$TELEGRAM_PROXY_SCHEME" ] || [ -z "$TELEGRAM_PROXY_HOST" ] || [ -z "$TELEGRAM_PROXY_PORT" ]; then
         if [ -f ".env" ]; then
             # 逐行读取.env文件
             while IFS= read -r line || [[ -n "$line" ]]; do
