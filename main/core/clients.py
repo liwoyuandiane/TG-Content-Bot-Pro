@@ -23,6 +23,7 @@ class ClientManager:
         self.session_svc = session_service
         # 延迟获取代理配置，直到需要时
         self._proxy_config = None
+        self.logger = logging.getLogger(__name__)
         
     @property
     def proxy_config(self) -> Optional[Dict[str, Any]]:
