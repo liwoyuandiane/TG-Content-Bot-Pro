@@ -49,6 +49,12 @@ class ClientManager:
             # 这样可以更容易地在不同环境中切换代理配置
             pass
         
+        # 检查是否明确禁用了代理
+        disable_proxy = os.getenv('DISABLE_PROXY', '').lower() in ['true', '1', 'yes']
+        if disable_proxy:
+            logger.info("代理已被明确禁用")
+            return None
+        
         if proxy_scheme and proxy_host and proxy_port:
             try:
                 proxy_port = int(proxy_port)
@@ -341,11 +347,10 @@ class ClientManager:
                 # 验证SESSION格式并获取修正后的值
                 corrected_session = self._validate_and_fix_session(settings.SESSION)
                 
-                # 如果SESSION验证失败，记录错误并跳过Userbot初始化
+                # 即使SESSION验证失败，也尝试使用原始SESSION启动Userbot
                 if corrected_session is None:
-                    logger.error("SESSION验证失败，Userbot将不启动")
-                    self.userbot = None
-                    return
+                    logger.warning("SESSION验证失败，但仍将尝试使用原始SESSION启动Userbot")
+                    corrected_session = settings.SESSION
                 
                 # 只在SESSION被修正时更新配置
                 if corrected_session != settings.SESSION:
@@ -430,13 +435,29 @@ class ClientManager:
                             # 重新创建客户端
                             if pyrogram_proxy:
                                 pyrogram_proxy_config = self._create_pyrogram_proxy_config(pyrogram_proxy)
-                                self.userbot = Client(
-                                    "saverestricted", 
-                                    session_string=settings.SESSION, 
-                                    api_hash=settings.API_HASH, 
-                                    api_id=settings.API_ID,
-                                    proxy=pyrogram_proxy_config
-                                )
+                                # 对于HTTP代理认证，Pyrogram可能不支持通过proxy参数传递
+                                # 尝试使用环境变量设置代理
+                                if pyrogram_proxy_config and pyrogram_proxy_config['scheme'] in ['http', 'https']:
+                                    import os
+                                    proxy_url = f"{pyrogram_proxy_config['scheme']}://{pyrogram_proxy_config.get('username', '')}:{pyrogram_proxy_config.get('password', '')}@{pyrogram_proxy_config['hostname']}:{pyrogram_proxy_config['port']}"
+                                    os.environ['HTTP_PROXY'] = proxy_url
+                                    os.environ['HTTPS_PROXY'] = proxy_url
+                                    logger.info(f"通过环境变量设置代理: {proxy_url}")
+                                    # 不传递proxy参数，让Pyrogram使用环境变量
+                                    self.userbot = Client(
+                                        "saverestricted", 
+                                        session_string=settings.SESSION, 
+                                        api_hash=settings.API_HASH, 
+                                        api_id=settings.API_ID
+                                    )
+                                else:
+                                    self.userbot = Client(
+                                        "saverestricted", 
+                                        session_string=settings.SESSION, 
+                                        api_hash=settings.API_HASH, 
+                                        api_id=settings.API_ID,
+                                        proxy=pyrogram_proxy_config
+                                    )
                             else:
                                 self.userbot = Client(
                                     "saverestricted", 
@@ -455,10 +476,13 @@ class ClientManager:
                                 return
                         else:
                             # 没有备用SESSION可用或SESSION相同
+                            # 即使出错也继续运行，Userbot不是必需的
+                            logger.warning("Userbot启动失败，但应用将继续运行")
                             self.userbot = None
                             return
                     else:
                         # 其他情况直接抛出错误
+                        logger.warning("Userbot启动失败，但应用将继续运行")
                         self.userbot = None
                         return
             else:
@@ -466,6 +490,7 @@ class ClientManager:
                 self.userbot = None
         except Exception as e:
             logger.error(f"Userbot启动失败: {e}")
+            logger.warning("Userbot启动失败，但应用将继续运行")
             self.userbot = None
     
     def _validate_and_fix_session(self, session_string: str) -> Optional[str]:
