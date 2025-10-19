@@ -66,8 +66,8 @@ class SessionPlugin(BasePlugin):
         if not session_string:
             return False, "SESSION字符串不能为空"
         
-        # 清理字符串，移除可能的空格、换行符等
-        cleaned_session = re.sub(r'\s+', '', session_string)
+        # 更彻底的清理字符串，移除所有非base64字符
+        cleaned_session = re.sub(r'[^A-Za-z0-9+/=]', '', session_string)
         
         # 基本格式检查（Pyrogram session 字符串通常是 base64 编码）
         if not re.match(r"^[A-Za-z0-9+/=]+$", cleaned_session):
@@ -76,6 +76,18 @@ class SessionPlugin(BasePlugin):
         # 长度检查
         if len(cleaned_session) < 50:
             return False, "SESSION字符串长度不足"
+        
+        # Base64格式检查
+        if cleaned_session.count('=') > 2:
+            return False, "SESSION字符串格式无效"
+        
+        # 检查是否为有效的base64格式
+        try:
+            import base64
+            # 尝试解码以验证格式
+            base64.b64decode(cleaned_session)
+        except Exception:
+            return False, "SESSION字符串不是有效的Base64格式"
         
         return True, "有效"
     
@@ -107,7 +119,7 @@ class SessionPlugin(BasePlugin):
             
             # 使用清理后的 SESSION 字符串
             import re
-            cleaned_session = re.sub(r'\s+', '', session_string)
+            cleaned_session = re.sub(r'[^A-Za-z0-9+/=]', '', session_string)
             
             # 添加用户
             user = await event.get_sender()
