@@ -319,7 +319,38 @@ class SessionPlugin(BasePlugin):
                     )
                 except Exception as e:
                     await temp_client.disconnect()
-                    await event.reply(f"❌ 发送验证码失败: {str(e)}\n\n请使用 /generatesession 重新开始")
+                    # 提供更友好的错误提示信息
+                    error_msg = "❌ 发送验证码失败\n\n"
+                    if "FLOOD_WAIT" in str(e).upper():
+                        # 解析 FloodWait 错误中的等待时间
+                        import re
+                        flood_match = re.search(r'(\d+)', str(e))
+                        if flood_match:
+                            wait_seconds = int(flood_match.group(1))
+                            hours = wait_seconds // 3600
+                            minutes = (wait_seconds % 3600) // 60
+                            if hours > 0:
+                                error_msg += f"由于 Telegram 限制，需要等待 {hours} 小时 {minutes} 分钟后才能重试。\n\n"
+                            else:
+                                error_msg += f"由于 Telegram 限制，需要等待 {minutes} 分钟后才能重试。\n\n"
+                        else:
+                            error_msg += "由于 Telegram 限制，需要等待一段时间后才能重试。\n\n"
+                    else:
+                        error_msg += f"错误信息: {str(e)}\n\n"
+                    
+                    error_msg += "可能的原因:\n"
+                    error_msg += "• 手机号码已被 Telegram 临时限制\n"
+                    error_msg += "• API_ID 或 API_HASH 不正确\n"
+                    error_msg += "• 服务器 IP 被 Telegram 限制\n\n"
+                    error_msg += "解决方案:\n"
+                    error_msg += "• 等待限制时间解除后重试\n"
+                    error_msg += "• 检查 API 凭证是否正确\n"
+                    error_msg += "• 尝试使用本地脚本生成 SESSION:\n"
+                    error_msg += "  python3 get_session.py\n"
+                    error_msg += "• 更换手机号码或服务器 IP\n\n"
+                    error_msg += "使用 /generatesession 重新开始"
+                    
+                    await event.reply(error_msg)
                     del self.session_generation_tasks[user_id]
                     
             elif step == 'code':
