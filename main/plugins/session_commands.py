@@ -94,7 +94,7 @@ class SessionPlugin(BasePlugin):
                     await conv.send_message(
                         "**请输入 SESSION 字符串**\n\n"
                         "请直接发送您的 SESSION 字符串，我会自动处理其中可能包含的换行符和空格。\n\n"
-                        "提示：您可以从 @sessionbot 或通过运行 get_session.py 脚本获取 SESSION 字符串。"
+                        "提示：您可以通过运行 /generatesession 命令在线生成 SESSION 字符串，或通过运行 get_session.py 脚本获取 SESSION 字符串。"
                     )
                     try:
                         response = await conv.get_response(timeout=120)
