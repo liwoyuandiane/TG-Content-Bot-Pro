@@ -235,10 +235,15 @@ class ClientManager:
                     await self.userbot.start()
                     logger.info("Userbot客户端启动成功")
                 except Exception as start_error:
+                    error_msg = str(start_error).lower()
                     logger.error(f"Userbot启动失败: {start_error}")
                     
-                    # 如果是使用.env中的SESSION且启动失败，尝试从数据库获取SESSION
-                    if original_session and original_session == settings.SESSION:
+                    # 检查是否是SESSION相关错误
+                    session_errors = ["unpack requires a buffer", "invalid session", "session expired", "session revoked", "session invalid"]
+                    is_session_error = any(err in error_msg for err in session_errors)
+                    
+                    # 如果是SESSION错误或使用.env中的SESSION且启动失败，尝试从数据库获取SESSION
+                    if is_session_error or (original_session and original_session == settings.SESSION):
                         logger.info("尝试从数据库获取备用SESSION...")
                         db_session = await self.session_svc.get_session(settings.AUTH)
                         if db_session and db_session != settings.SESSION:
@@ -273,10 +278,15 @@ class ClientManager:
                                 )
                             
                             # 再次尝试启动
-                            await self.userbot.start()
-                            logger.info("使用数据库SESSION启动Userbot客户端成功")
+                            try:
+                                await self.userbot.start()
+                                logger.info("使用数据库SESSION启动Userbot客户端成功")
+                            except Exception as db_start_error:
+                                logger.error(f"使用数据库SESSION启动Userbot客户端失败: {db_start_error}")
+                                self.userbot = None
+                                raise db_start_error
                         else:
-                            # 没有备用SESSION可用
+                            # 没有备用SESSION可用或SESSION相同
                             self.userbot = None
                             raise start_error
                     else:
@@ -379,7 +389,10 @@ class ClientManager:
             
             # 停止当前userbot
             if self.userbot:
-                await self.userbot.stop()
+                try:
+                    await self.userbot.stop()
+                except:
+                    pass
             
             # 更新配置
             settings.SESSION = corrected_session
@@ -388,7 +401,7 @@ class ClientManager:
             await self._init_userbot()
             
             logger.info("Userbot SESSION刷新成功")
-            return True
+            return self.userbot is not None and self.userbot.is_connected
         except Exception as e:
             logger.error(f"刷新Userbot SESSION时出错: {e}")
             # 即使出错也尝试使用原始SESSION初始化
@@ -396,9 +409,20 @@ class ClientManager:
                 settings.SESSION = new_session
                 await self._init_userbot()
                 logger.info("Userbot SESSION使用原始字符串刷新成功")
-                return True
+                return self.userbot is not None and self.userbot.is_connected
             except Exception as fallback_error:
                 logger.error(f"使用原始SESSION刷新也失败: {fallback_error}")
+                # 最后的备用方案：尝试使用数据库中的SESSION
+                try:
+                    db_session = await self.session_svc.get_session(settings.AUTH)
+                    if db_session and db_session != new_session:
+                        logger.info("尝试使用数据库中的SESSION作为最后备用方案")
+                        settings.SESSION = db_session
+                        await self._init_userbot()
+                        logger.info("使用数据库SESSION刷新Userbot成功")
+                        return self.userbot is not None and self.userbot.is_connected
+                except Exception as last_fallback_error:
+                    logger.error(f"使用数据库SESSION作为备用方案也失败: {last_fallback_error}")
                 return False
     
     def get_client_status(self) -> dict:
