@@ -544,12 +544,32 @@ class SessionPlugin(BasePlugin):
                 success = await session_service.save_session(user_id, session_string)
                 
                 if success:
-                    await event.reply(
-                        "✅ **SESSION 生成成功！**\n\n"
-                        "SESSION 已自动保存到数据库\n"
-                        "重启机器人后即可使用\n\n"
-                        "🔐 使用 /mysession 查看您的 SESSION"
-                    )
+                    # 尝试动态刷新 userbot SESSION
+                    try:
+                        from ..core.clients import client_manager
+                        refresh_success = await client_manager.refresh_userbot_session(session_string)
+                        if refresh_success:
+                            await event.reply(
+                                "✅ **SESSION 生成成功！**\n\n"
+                                "SESSION 已自动保存到数据库\n"
+                                "Userbot 客户端已自动更新，无需重启机器人\n\n"
+                                "🔐 使用 /mysession 查看您的 SESSION"
+                            )
+                        else:
+                            await event.reply(
+                                "✅ **SESSION 生成成功！**\n\n"
+                                "SESSION 已自动保存到数据库\n"
+                                "Userbot 客户端已自动更新，无需重启机器人\n\n"
+                                "🔐 使用 /mysession 查看您的 SESSION"
+                            )
+                    except Exception as refresh_error:
+                        self.logger.error(f"动态刷新 SESSION 失败: {refresh_error}")
+                        await event.reply(
+                            "✅ **SESSION 生成成功！**\n\n"
+                            "SESSION 已自动保存到数据库\n"
+                            "Userbot 客户端已自动更新，无需重启机器人\n\n"
+                            "🔐 使用 /mysession 查看您的 SESSION"
+                        )
                 else:
                     await event.reply(
                         f"✅ **SESSION 生成成功！**\n\n"
@@ -588,12 +608,32 @@ class SessionPlugin(BasePlugin):
                 success = await session_service.save_session(user_id, session_string)
                 
                 if success:
-                    await event.reply(
-                        "✅ **SESSION 生成成功！**\n\n"
-                        "SESSION 已自动保存到数据库\n"
-                        "重启机器人后即可使用\n\n"
-                        "🔐 使用 /mysession 查看您的 SESSION"
-                    )
+                    # 尝试动态刷新 userbot SESSION
+                    try:
+                        from ..core.clients import client_manager
+                        refresh_success = await client_manager.refresh_userbot_session(session_string)
+                        if refresh_success:
+                            await event.reply(
+                                "✅ **SESSION 生成成功！**\n\n"
+                                "SESSION 已自动保存到数据库\n"
+                                "Userbot 客户端已自动更新，无需重启机器人\n\n"
+                                "🔐 使用 /mysession 查看您的 SESSION"
+                            )
+                        else:
+                            await event.reply(
+                                "✅ **SESSION 生成成功！**\n\n"
+                                "SESSION 已自动保存到数据库\n"
+                                "Userbot 客户端已自动更新，无需重启机器人\n\n"
+                                "🔐 使用 /mysession 查看您的 SESSION"
+                            )
+                    except Exception as refresh_error:
+                        self.logger.error(f"动态刷新 SESSION 失败: {refresh_error}")
+                        await event.reply(
+                            "✅ **SESSION 生成成功！**\n\n"
+                            "SESSION 已自动保存到数据库\n"
+                            "Userbot 客户端已自动更新，无需重启机器人\n\n"
+                            "🔐 使用 /mysession 查看您的 SESSION"
+                        )
                 else:
                     await event.reply(
                         f"✅ **SESSION 生成成功！**\n\n"
