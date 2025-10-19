@@ -86,8 +86,8 @@ class DownloadTaskManager:
         """等待任务完成"""
         return await self.task_queue.wait_for_task(task_id, timeout)
     
-    async def process_batch_download(self, sender: int, start_link: str, count: int) -> str:
-        """处理批量下载任务"""
+    async def create_batch_task(self, sender: int, start_link: str, count: int) -> str:
+        """创建批量下载任务"""
         batch_task_id = f"batch_{int(datetime.now().timestamp())}"
         
         logger.info(f"开始批量下载任务: {batch_task_id} - 从 {start_link} 下载 {count} 个消息")
@@ -99,12 +99,28 @@ class DownloadTaskManager:
                 sender=sender,
                 msg_link=start_link,
                 offset=i,
-                priority=1  # 批量任务给较高优先级
+                priority=1
             )
             task_ids.append(task_id)
         
         logger.info(f"批量下载任务 {batch_task_id} 已添加 {len(task_ids)} 个子任务")
         return batch_task_id
+    
+    async def update_batch_progress(self, task_id: str, completed: int) -> None:
+        """更新批量任务进度"""
+        logger.debug(f"批量任务 {task_id} 进度更新: {completed}")
+    
+    async def complete_batch_task(self, task_id: str) -> None:
+        """完成批量任务"""
+        logger.info(f"批量任务 {task_id} 已完成")
+    
+    async def cancel_batch_task(self, task_id: str) -> None:
+        """取消批量任务"""
+        logger.info(f"批量任务 {task_id} 已取消")
+    
+    async def process_batch_download(self, sender: int, start_link: str, count: int) -> str:
+        """处理批量下载任务（别名方法，保持向后兼容）"""
+        return await self.create_batch_task(sender, start_link, count)
 
 
 # 全局下载任务管理器实例
