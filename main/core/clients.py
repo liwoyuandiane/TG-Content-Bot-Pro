@@ -181,6 +181,10 @@ class ClientManager:
     async def _init_userbot(self):
         """初始化userbot客户端"""
         try:
+            # 保存原始SESSION配置
+            original_session = settings.SESSION
+            fallback_to_db = False
+            
             # 如果没有设置SESSION，尝试从会话服务获取SESSION
             if not settings.SESSION:
                 user_session = await self.session_svc.get_session(settings.AUTH)
@@ -226,8 +230,59 @@ class ClientManager:
                         api_id=settings.API_ID
                     )
                 
-                await self.userbot.start()
-                logger.info("Userbot客户端启动成功")
+                # 尝试启动Userbot
+                try:
+                    await self.userbot.start()
+                    logger.info("Userbot客户端启动成功")
+                except Exception as start_error:
+                    logger.error(f"Userbot启动失败: {start_error}")
+                    
+                    # 如果是使用.env中的SESSION且启动失败，尝试从数据库获取SESSION
+                    if original_session and original_session == settings.SESSION:
+                        logger.info("尝试从数据库获取备用SESSION...")
+                        db_session = await self.session_svc.get_session(settings.AUTH)
+                        if db_session and db_session != settings.SESSION:
+                            logger.info("切换到数据库中的SESSION")
+                            # 停止当前尝试
+                            if self.userbot:
+                                try:
+                                    await self.userbot.stop()
+                                except:
+                                    pass
+                                self.userbot = None
+                            
+                            # 使用数据库中的SESSION
+                            settings.SESSION = db_session
+                            fallback_to_db = True
+                            
+                            # 重新创建客户端
+                            if pyrogram_proxy:
+                                self.userbot = Client(
+                                    "saverestricted", 
+                                    session_string=settings.SESSION, 
+                                    api_hash=settings.API_HASH, 
+                                    api_id=settings.API_ID,
+                                    proxy=pyrogram_proxy
+                                )
+                            else:
+                                self.userbot = Client(
+                                    "saverestricted", 
+                                    session_string=settings.SESSION, 
+                                    api_hash=settings.API_HASH, 
+                                    api_id=settings.API_ID
+                                )
+                            
+                            # 再次尝试启动
+                            await self.userbot.start()
+                            logger.info("使用数据库SESSION启动Userbot客户端成功")
+                        else:
+                            # 没有备用SESSION可用
+                            self.userbot = None
+                            raise start_error
+                    else:
+                        # 其他情况直接抛出错误
+                        self.userbot = None
+                        raise start_error
             else:
                 logger.warning("未配置SESSION，Userbot将以有限功能运行")
                 self.userbot = None
