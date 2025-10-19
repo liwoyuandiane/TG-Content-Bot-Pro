@@ -522,6 +522,16 @@ class ClientManager:
                 self.logger.warning(f"SESSION解码后数据长度过短: {len(decoded)} 字节")
                 return None
                 
+            # 特别检查是否符合Pyrogram SESSION格式
+            # Pyrogram SESSION通常以特定的字节序列开始
+            if len(decoded) >= 4:
+                # 检查前4个字节是否符合Pyrogram SESSION格式
+                # Pyrogram SESSION通常以特定的版本号开始
+                version_byte = decoded[0]
+                if version_byte in [1, 2, 3]:  # Pyrogram SESSION版本号
+                    self.logger.info(f"检测到有效的Pyrogram SESSION，版本: {version_byte}")
+                    return session_string  # 返回原始字符串，因为它可能是有效的
+            
             self.logger.info("SESSION验证通过")
             return cleaned_session
         except Exception as e:
