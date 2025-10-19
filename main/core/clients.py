@@ -247,6 +247,12 @@ class ClientManager:
         if not session_string or len(session_string) < 10:
             return None
         
+        # 对于Pyrogram SESSION，直接返回原字符串（不做严格验证）
+        # Pyrogram SESSION格式与Telethon不同，可能包含特殊字符
+        if session_string.startswith("1") or session_string.startswith("2") or session_string.startswith("3"):
+            self.logger.info("检测到Pyrogram SESSION格式，跳过严格验证")
+            return session_string
+        
         # 清理字符串，移除所有非base64字符
         import re
         cleaned_session = re.sub(r'[^A-Za-z0-9+/=_-]', '', session_string)
@@ -266,7 +272,8 @@ class ClientManager:
         # 验证是否符合Base64模式
         if not re.match(r'^[A-Za-z0-9+/]*={0,2}$', cleaned_session):
             self.logger.warning(f"SESSION不符合Base64模式: {cleaned_session[:50]}...")
-            return None
+            # 即使格式不完全匹配，也返回清理后的SESSION以供尝试
+            return session_string
         
         # 尝试解码以验证格式
         try:
@@ -276,7 +283,8 @@ class ClientManager:
             return cleaned_session
         except Exception as e:
             self.logger.warning(f"SESSION解码失败: {e}")
-            return None
+            # 即使解码失败，也返回原始SESSION以供尝试
+            return session_string
     
     async def stop_clients(self):
         """停止所有客户端"""
@@ -321,7 +329,15 @@ class ClientManager:
             return True
         except Exception as e:
             logger.error(f"刷新Userbot SESSION时出错: {e}")
-            return False
+            # 即使出错也尝试使用原始SESSION初始化
+            try:
+                settings.SESSION = new_session
+                await self._init_userbot()
+                logger.info("Userbot SESSION使用原始字符串刷新成功")
+                return True
+            except Exception as fallback_error:
+                logger.error(f"使用原始SESSION刷新也失败: {fallback_error}")
+                return False
     
     def get_client_status(self) -> dict:
         """获取客户端状态"""
