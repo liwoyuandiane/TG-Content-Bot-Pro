@@ -153,7 +153,7 @@ class SessionPlugin(BasePlugin):
                 session_preview = session[:20] + "..." if len(session) > 20 else session
                 
                 msg += f"{i}. **用户**: {username} ({user_id})\n"
-                msg += f"   SESSION: \n\n"
+                msg += f"   SESSION: {session_preview}\n\n"
             
             msg += f"**总计**: {len(sessions)} 个会话"
             
@@ -170,13 +170,13 @@ class SessionPlugin(BasePlugin):
             if not session:
                 await event.reply(
                     "❌ 您还没有保存 SESSION\n\n"
-                    "使用  添加"
+                    "使用 /addsession 添加"
                 )
                 return
             
             msg = "🔐 **您的 SESSION 信息**\n\n"
-            msg += f"用户ID: \n"
-            msg += f"SESSION: \n\n"
+            msg += f"用户ID: {event.sender_id}\n"
+            msg += f"SESSION: {session}\n\n"
             msg += "⚠️ 请勿泄露此信息"
             
             await event.reply(msg)
@@ -291,6 +291,7 @@ class SessionPlugin(BasePlugin):
                     return
                 
                 data['phone'] = text
+                phone_number = data['phone']
                 
                 await event.reply("⏳ 正在发送验证码，请稍候...")
                 
@@ -298,26 +299,54 @@ class SessionPlugin(BasePlugin):
                     f"temp_session_{user_id}",
                     api_id=data['api_id'],
                     api_hash=data['api_hash'],
-                    phone_number=data['phone'],
+                    device_model="TG-Content-Bot Session Generator",
                     in_memory=True
                 )
                 
                 try:
                     await temp_client.connect()
-                    sent_code = await temp_client.send_code(data['phone'])
+                    self.logger.info(f"客户端已连接，准备发送验证码到: {phone_number}")
+                    
+                    sent_code = await temp_client.send_code(phone_number)
+                    
+                    # 详细日志
+                    self.logger.info(f"send_code 返回: type={sent_code.type}, hash={sent_code.phone_code_hash[:20]}..., timeout={sent_code.timeout}")
+                    
                     data['phone_code_hash'] = sent_code.phone_code_hash
                     data['client'] = temp_client
-                    # 使用time.time()替代asyncio.get_event_loop().time()以确保一致性
                     data['code_sent_time'] = time.time()
+                    data['sent_code_type'] = str(sent_code.type)
                     task['step'] = 'code'
                     
-                    await event.reply(
-                        "✅ 验证码已发送到您的 Telegram 账号\n\n"
-                        "4️⃣ 请发送收到的 **验证码**\n"
-                        "   (5位数字)\n\n"
-                        "⚠️ 验证码有效期3分钟，请尽快输入"
-                    )
+                    # 根据验证码类型提供明确指引
+                    code_type_str = str(sent_code.type)
+                    if "APP" in code_type_str.upper():
+                        instruction = (
+                            "✅ **验证码已通过 Telegram 应用内消息发送**\n\n"
+                            "📱 **验证码查找方法**:\n"
+                            "1️⃣ 查看 Telegram 通知栏\n"
+                            "2️⃣ 在聊天列表顶部查找 \"Telegram\" 官方账号\n"
+                            "3️⃣ 检查是否有验证码弹窗\n\n"
+                            "❓ **看不到验证码？**\n"
+                            "• 发送 `resend` 切换为短信接收\n"
+                            "• 或直接发送验证码: `1 2 3 4 5`\n\n"
+                            f"⏱ 下一种方式: {sent_code.next_type if sent_code.next_type else '短信'}"
+                        )
+                    elif "SMS" in code_type_str.upper():
+                        instruction = (
+                            "✅ **验证码已通过短信发送到您的手机**\n\n"
+                            "📱 请查看手机短信，然后发送验证码\n"
+                            "格式: `1 2 3 4 5` (用空格分隔)"
+                        )
+                    else:
+                        instruction = (
+                            f"✅ 验证码已发送（类型: {sent_code.type}）\n\n"
+                            "请输入收到的验证码，格式: `1 2 3 4 5`"
+                        )
+                    
+                    await event.reply(instruction)
                 except Exception as e:
+                    self.logger.error(f"发送验证码失败: {type(e).__name__}: {str(e)}")
                     await temp_client.disconnect()
                     # 提供更友好的错误提示信息
                     error_msg = "❌ 发送验证码失败\n\n"
@@ -354,6 +383,54 @@ class SessionPlugin(BasePlugin):
                     del self.session_generation_tasks[user_id]
                     
             elif step == 'code':
+                # 检查是否是重新发送请求
+                if text.lower() == 'resend':
+                    temp_client = data.get('client')
+                    if not temp_client:
+                        await event.reply("❌ 会话已过期，请使用 /generatesession 重新开始")
+                        del self.session_generation_tasks[user_id]
+                        return
+                    
+                    try:
+                        await event.reply("⏳ 正在重新发送验证码...")
+                        phone_code_hash = data.get('phone_code_hash')
+                        phone_number = data.get('phone')
+                        sent_code = await temp_client.resend_code(phone_number, phone_code_hash)
+                        
+                        # 更新验证码类型信息
+                        data['sent_code_type'] = str(sent_code.type)
+                        
+                        # 根据新验证码类型提供指引
+                        code_type_str = str(sent_code.type)
+                        if "APP" in code_type_str.upper():
+                            instruction = (
+                                "✅ **验证码已重新通过 Telegram 应用内消息发送**\n\n"
+                                "📱 **验证码查找方法**:\n"
+                                "1️⃣ 查看 Telegram 通知栏\n"
+                                "2️⃣ 在聊天列表顶部查找 \"Telegram\" 官方账号\n"
+                                "3️⃣ 检查是否有验证码弹窗\n\n"
+                                "请发送收到的验证码，格式: `1 2 3 4 5`"
+                            )
+                        elif "SMS" in code_type_str.upper():
+                            instruction = (
+                                "✅ **验证码已重新通过短信发送到您的手机**\n\n"
+                                "📱 请查看手机短信，然后发送验证码\n"
+                                "格式: `1 2 3 4 5` (用空格分隔)"
+                            )
+                        else:
+                            instruction = (
+                                f"✅ 验证码已重新发送（类型: {sent_code.type}）\n\n"
+                                "请输入收到的验证码，格式: `1 2 3 4 5`"
+                            )
+                        
+                        await event.reply(instruction)
+                        return
+                    except Exception as resend_error:
+                        await event.reply(f"❌ 重新发送验证码失败: {str(resend_error)}\n\n请使用 /generatesession 重新开始")
+                        await temp_client.disconnect()
+                        del self.session_generation_tasks[user_id]
+                        return
+                
                 code = text.replace('-', '').replace(' ', '')
                 
                 if not code.isdigit() or len(code) != 5:
