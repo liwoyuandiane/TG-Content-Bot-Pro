@@ -90,7 +90,7 @@ class SessionPlugin(BasePlugin):
                 session_string = text.split(maxsplit=1)[1].strip()
             else:
                 # 如果没有直接提供，启动一个对话来获取 SESSION 字符串
-                async with client_manager.bot.conversation(event.chat_id) as conv:
+                async with self.clients.bot.conversation(event.chat_id) as conv:
                     await conv.send_message(
                         "**请输入 SESSION 字符串**\n\n"
                         "请直接发送您的 SESSION 字符串，我会自动处理其中可能包含的换行符和空格。\n\n"
