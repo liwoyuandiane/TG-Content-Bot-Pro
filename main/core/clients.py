@@ -135,8 +135,7 @@ class ClientManager:
             
             # 对于HTTP代理，如果需要认证，需要特殊处理
             if 'username' in self.proxy_config and 'password' in self.proxy_config:
-                # Telethon的HTTP代理认证需要通过URL格式传递
-                # 这种情况下我们返回基本配置，认证在客户端初始化时处理
+                # Telethon的HTTP代理认证需要通过代理对象传递
                 return (
                     scheme,
                     hostname,
@@ -193,18 +192,17 @@ class ClientManager:
             
             # 创建Telethon客户端
             if telethon_proxy:
-                # 检查是否是带认证的HTTP代理
+                # 检查是否是带认证的代理
                 if (len(telethon_proxy) >= 3 and 
-                    telethon_proxy[0] in ['http', 'https'] and 
-                    settings.TELEGRAM_PROXY_USERNAME and 
-                    settings.TELEGRAM_PROXY_PASSWORD):
-                    # 对于HTTP代理认证，Telethon需要特殊处理
-                    logger.info(f"使用带认证的HTTP代理: {telethon_proxy[0]}://{settings.TELEGRAM_PROXY_USERNAME}:****@{telethon_proxy[1]}:{telethon_proxy[2]}")
+                    'username' in self.proxy_config and 
+                    'password' in self.proxy_config):
+                    # 对于带认证的代理
+                    logger.info(f"使用带认证的代理: {telethon_proxy[0]}://{self.proxy_config['username']}:****@{telethon_proxy[1]}:{telethon_proxy[2]}")
                     self.bot = TelegramClient(
                         'bot', 
                         settings.API_ID, 
                         settings.API_HASH,
-                        proxy=(telethon_proxy[0], telethon_proxy[1], telethon_proxy[2])
+                        proxy=telethon_proxy
                     )
                 else:
                     logger.info(f"使用代理: {telethon_proxy[0]}://{telethon_proxy[1]}:{telethon_proxy[2]}")
