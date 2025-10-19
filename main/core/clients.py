@@ -199,8 +199,7 @@ class ClientManager:
                     settings.TELEGRAM_PROXY_USERNAME and 
                     settings.TELEGRAM_PROXY_PASSWORD):
                     # 对于HTTP代理认证，Telethon需要特殊处理
-                    proxy_url = f"{telethon_proxy[0]}://{settings.TELEGRAM_PROXY_USERNAME}:{settings.TELEGRAM_PROXY_PASSWORD}@{telethon_proxy[1]}:{telethon_proxy[2]}"
-                    logger.info(f"使用带认证的HTTP代理: {proxy_url}")
+                    logger.info(f"使用带认证的HTTP代理: {telethon_proxy[0]}://{settings.TELEGRAM_PROXY_USERNAME}:****@{telethon_proxy[1]}:{telethon_proxy[2]}")
                     self.bot = TelegramClient(
                         'bot', 
                         settings.API_ID, 
@@ -276,10 +275,11 @@ class ClientManager:
                 # 验证SESSION格式并获取修正后的值
                 corrected_session = self._validate_and_fix_session(settings.SESSION)
                 
-                # 如果SESSION验证失败，记录错误并继续使用原始SESSION
+                # 如果SESSION验证失败，记录错误并跳过Userbot初始化
                 if corrected_session is None:
-                    logger.warning("SESSION验证失败，将使用原始SESSION尝试初始化")
-                    corrected_session = settings.SESSION
+                    logger.error("SESSION验证失败，Userbot将不启动")
+                    self.userbot = None
+                    return
                 
                 # 只在SESSION被修正时更新配置
                 if corrected_session != settings.SESSION:
@@ -345,12 +345,13 @@ class ClientManager:
                             
                             # 重新创建客户端
                             if pyrogram_proxy:
+                                pyrogram_proxy_config = self._create_pyrogram_proxy_config(pyrogram_proxy)
                                 self.userbot = Client(
                                     "saverestricted", 
                                     session_string=settings.SESSION, 
                                     api_hash=settings.API_HASH, 
                                     api_id=settings.API_ID,
-                                    proxy=pyrogram_proxy
+                                    proxy=pyrogram_proxy_config
                                 )
                             else:
                                 self.userbot = Client(
@@ -367,15 +368,15 @@ class ClientManager:
                             except Exception as db_start_error:
                                 logger.error(f"使用数据库SESSION启动Userbot客户端失败: {db_start_error}")
                                 self.userbot = None
-                                raise db_start_error
+                                return
                         else:
                             # 没有备用SESSION可用或SESSION相同
                             self.userbot = None
-                            raise start_error
+                            return
                     else:
                         # 其他情况直接抛出错误
                         self.userbot = None
-                        raise start_error
+                        return
             else:
                 logger.warning("未配置SESSION，Userbot将以有限功能运行")
                 self.userbot = None
