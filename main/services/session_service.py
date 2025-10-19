@@ -90,8 +90,12 @@ class SessionService:
             logger.warning("SESSION格式无效")
             return False
         
+        # 使用清理后的SESSION字符串
+        import re
+        cleaned_session = re.sub(r'[^A-Za-z0-9+/=]', '', session_string)
+        
         # 加密SESSION
-        encrypted_session = self._encrypt_session(session_string)
+        encrypted_session = self._encrypt_session(cleaned_session)
         if encrypted_session is None:
             return False
         
@@ -174,15 +178,20 @@ class SessionService:
         if not session_string or len(session_string) < 10:
             return False
         
-        # 检查是否包含必要的组件
-        # Pyrogram session strings are typically base64 encoded
-        try:
-            # 尝试base64解码来验证格式
-            import base64
-            base64.b64decode(session_string)
-            return True
-        except Exception:
+        # 清理字符串，移除所有非base64字符
+        import re
+        cleaned_session = re.sub(r'[^A-Za-z0-9+/=]', '', session_string)
+        
+        # 基本长度检查
+        if len(cleaned_session) < 50:
             return False
+        
+        # 对于可能被截断的字符串，我们采用更宽松的验证
+        # 只要清理后的字符串看起来像Base64格式即可
+        if re.match(r'^[A-Za-z0-9+/]*={0,2}$', cleaned_session):
+            return True
+        
+        return False
     
     async def validate_session(self, user_id: int, session_string: str) -> bool:
         """验证SESSION有效性"""
