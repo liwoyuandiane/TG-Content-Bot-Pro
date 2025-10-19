@@ -129,24 +129,22 @@ class ClientManager:
                         hostname,
                         port
                     )
-            # Telethon只支持http代理，不支持https
-            elif scheme == 'https':
-                scheme = 'http'  # Telethon不支持https代理
-            
-            # 对于HTTP代理，如果需要认证，需要特殊处理
-            if 'username' in self.proxy_config and 'password' in self.proxy_config:
+            # 对于HTTP代理，Telethon需要特殊处理
+            elif scheme in ['http', 'https']:
                 # Telethon的HTTP代理认证需要通过代理对象传递
-                return (
-                    scheme,
-                    hostname,
-                    port
-                )
-            else:
-                return (
-                    scheme,
-                    hostname,
-                    port
-                )
+                if 'username' in self.proxy_config and 'password' in self.proxy_config:
+                    # 返回包含认证信息的元组
+                    return (
+                        hostname,
+                        port,
+                        self.proxy_config['username'],
+                        self.proxy_config['password']
+                    )
+                else:
+                    return (
+                        hostname,
+                        port
+                    )
         return None
     
     def _get_pyrogram_proxy(self) -> Optional[Dict[str, Any]]:
@@ -194,10 +192,9 @@ class ClientManager:
             if telethon_proxy:
                 # 检查是否是带认证的代理
                 if (len(telethon_proxy) >= 3 and 
-                    'username' in self.proxy_config and 
-                    'password' in self.proxy_config):
+                    isinstance(telethon_proxy[2], str)):  # 如果第三个参数是字符串，说明是用户名（认证信息）
                     # 对于带认证的代理
-                    logger.info(f"使用带认证的代理: {telethon_proxy[0]}://{self.proxy_config['username']}:****@{telethon_proxy[1]}:{telethon_proxy[2]}")
+                    logger.info(f"使用带认证的代理: {telethon_proxy[0]}:{telethon_proxy[1]} with auth")
                     self.bot = TelegramClient(
                         'bot', 
                         settings.API_ID, 
@@ -205,7 +202,7 @@ class ClientManager:
                         proxy=telethon_proxy
                     )
                 else:
-                    logger.info(f"使用代理: {telethon_proxy[0]}://{telethon_proxy[1]}:{telethon_proxy[2]}")
+                    logger.info(f"使用代理: {telethon_proxy[0]}:{telethon_proxy[1]}")
                     self.bot = TelegramClient(
                         'bot', 
                         settings.API_ID, 
