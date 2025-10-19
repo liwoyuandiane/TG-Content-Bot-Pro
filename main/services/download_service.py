@@ -395,14 +395,18 @@ class DownloadService:
         Args:
             client: Pyrogram客户端
             sender: 发送者用户ID
-            edit_id: 编辑消息ID
+            edit_id: 编辑消息ID（0表示不需要编辑状态消息）
             msg_link: 消息链接
             msg_id: 消息ID
             
         Returns:
             bool: 下载是否成功
         """
-        edit = await client.edit_message_text(sender, edit_id, "克隆中...")
+        # 只有在edit_id > 0时才发送状态消息
+        edit = None
+        if edit_id > 0:
+            edit = await client.edit_message_text(sender, edit_id, "克隆中...")
+        
         chat = msg_link.split("t.me")[1].split("/")[1]
         try:
             msg = await client.get_messages(chat, msg_id)
@@ -412,8 +416,13 @@ class DownloadService:
             await client.copy_message(sender, chat, msg_id)
         except Exception as e:
             logger.error(f"复制消息时出错: {e}", exc_info=True)
-            return await client.edit_message_text(sender, edit_id, f'保存失败: `{msg_link}`\n\n错误: {str(e)}')
-        await edit.delete()
+            if edit_id > 0:
+                await client.edit_message_text(sender, edit_id, f'保存失败: `{msg_link}`\n\n错误: {str(e)}')
+            return False
+        
+        # 只有在edit不为None时才删除状态消息
+        if edit:
+            await edit.delete()
         return True
     
     @handle_errors(default_return=False)

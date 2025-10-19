@@ -33,7 +33,14 @@ class TaskInfo:
     completed_at: Optional[datetime] = None
     error: Optional[str] = None
     result: Any = None
-    priority: int = 0  # 优先级，数字越大优先级越高
+    priority: int = 0
+    task_func: Optional[Callable] = None
+    args: tuple = ()
+    kwargs: dict = None
+    
+    def __post_init__(self):
+        if self.kwargs is None:
+            self.kwargs = {}
 
 
 class TaskQueueError(Exception):
@@ -176,9 +183,14 @@ class ImprovedTaskQueue:
     
     async def _execute_task(self, task_info: TaskInfo) -> Any:
         """执行任务"""
-        # 这里需要实现具体的任务执行逻辑
-        # 在重构后的系统中，这可能需要重新设计
-        raise NotImplementedError("任务执行逻辑需要在具体实现中定义")
+        if task_info.task_func is None:
+            raise NotImplementedError("任务函数未定义")
+        
+        # 执行任务函数
+        if asyncio.iscoroutinefunction(task_info.task_func):
+            return await task_info.task_func(*task_info.args, **task_info.kwargs)
+        else:
+            return task_info.task_func(*task_info.args, **task_info.kwargs)
     
     def add_task(self, name: str, task_func: Callable, *args, priority: int = 0, **kwargs) -> str:
         """添加任务到队列"""
@@ -196,6 +208,11 @@ class ImprovedTaskQueue:
             created_at=datetime.now(),
             priority=priority
         )
+        
+        # 存储任务函数和参数到task_info中
+        task_info.task_func = task_func
+        task_info.args = args
+        task_info.kwargs = kwargs
         
         # 注意：Python的PriorityQueue是小顶堆，所以我们使用负数来实现大顶堆
         self.pending_queue.put_nowait((-priority, task_info))
