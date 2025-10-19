@@ -44,6 +44,10 @@ class Settings:
         self.FORCESUB: Optional[str] = self._get_config("FORCESUB", default=None, cast=str)
         self.AUTH: int = self._get_config("AUTH", cast=int)
         
+        # 代理配置（带认证）
+        self.TELEGRAM_PROXY_USERNAME: Optional[str] = self._get_config("TELEGRAM_PROXY_USERNAME", default=None, cast=str)
+        self.TELEGRAM_PROXY_PASSWORD: Optional[str] = self._get_config("TELEGRAM_PROXY_PASSWORD", default=None, cast=str)
+        
         # 数据库配置
         self.MONGO_DB: Optional[str] = self._get_config("MONGO_DB", default=None, cast=str)
         
@@ -226,7 +230,9 @@ class Settings:
             "ENVIRONMENT": self.ENVIRONMENT,
             "DEBUG": self.DEBUG,
             "LOG_LEVEL": self.LOG_LEVEL,
-            "LOG_FILE": self.LOG_FILE
+            "LOG_FILE": self.LOG_FILE,
+            "TELEGRAM_PROXY_USERNAME": self.TELEGRAM_PROXY_USERNAME,
+            "TELEGRAM_PROXY_PASSWORD": self.TELEGRAM_PROXY_PASSWORD
         }
 
 

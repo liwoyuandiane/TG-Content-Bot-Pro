@@ -44,6 +44,21 @@ cd TG-Content-Bot-Pro
 bash install.sh
 ```
 
+### Development Commands
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run tests (if available)
+# (No specific test framework identified in the codebase)
+
+# Linting (no specific linter configured)
+# Manual code review recommended
+
+# Build/Package (no specific build process identified)
+```
+
 ### Bot User Commands
 
 - `/start` - Initialize bot, show personal stats
@@ -142,6 +157,32 @@ Supports (`utils/media_utils.py`):
 - Handles `?single` parameter removal
 - Chat ID conversion for private channels: `-100` prefix
 
+### Proxy Configuration
+
+The bot supports both SOCKS5 and HTTP proxies with optional authentication:
+
+1. **SOCKS5 Proxy**:
+   ```bash
+   TELEGRAM_PROXY_SCHEME=socks5
+   TELEGRAM_PROXY_HOST=your-proxy-server.com
+   TELEGRAM_PROXY_PORT=1080
+   # Optional authentication
+   TELEGRAM_PROXY_USERNAME=your_username
+   TELEGRAM_PROXY_PASSWORD=your_password
+   ```
+
+2. **HTTP Proxy**:
+   ```bash
+   TELEGRAM_PROXY_SCHEME=http
+   TELEGRAM_PROXY_HOST=your-proxy-server.com
+   TELEGRAM_PROXY_PORT=8080
+   # Optional authentication
+   TELEGRAM_PROXY_USERNAME=your_username
+   TELEGRAM_PROXY_PASSWORD=your_password
+   ```
+
+For more detailed proxy configuration instructions, see `SOCKS5_PROXY_SOLUTION.md`.
+
 ## Environment Variables
 
 Required in `.env` (see `.env.example`):
@@ -161,6 +202,8 @@ Optional environment variables:
 - `DEFAULT_PER_FILE_LIMIT` - Per-file size limit in bytes (default: 100MB)
 - `DEBUG` - Enable debug logging (default: False)
 - `LOG_LEVEL` - Logging level (default: INFO)
+- `TELEGRAM_PROXY_USERNAME` - Proxy username for authenticated proxies
+- `TELEGRAM_PROXY_PASSWORD` - Proxy password for authenticated proxies
 
 ## Key Implementation Details
 

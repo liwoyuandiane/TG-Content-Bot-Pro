@@ -1,7 +1,5 @@
 # SOCKS5代理配置解决方案
 
-
-
 ## 解决方案
 
 ### 方案1: 使用SOCKS5代理（推荐）
@@ -17,6 +15,10 @@
    # TELEGRAM_PROXY_SCHEME=socks5
    # TELEGRAM_PROXY_HOST=your-socks5-proxy-server.com
    # TELEGRAM_PROXY_PORT=1080
+   
+   # SOCKS5代理认证（可选）
+   # TELEGRAM_PROXY_USERNAME=your_proxy_username
+   # TELEGRAM_PROXY_PASSWORD=your_proxy_password
    ```
 
 ### 方案2: 使用传统的HTTP代理
@@ -32,6 +34,10 @@
    TELEGRAM_PROXY_SCHEME=http
    TELEGRAM_PROXY_HOST=your-http-proxy-server.com
    TELEGRAM_PROXY_PORT=8080
+   
+   # HTTP代理认证（可选）
+   TELEGRAM_PROXY_USERNAME=your_proxy_username
+   TELEGRAM_PROXY_PASSWORD=your_proxy_password
    ```
 
 ### 方案3: 直接连接（如果网络允许）
@@ -43,6 +49,26 @@
 # TELEGRAM_PROXY_SCHEME=
 # TELEGRAM_PROXY_HOST=
 # TELEGRAM_PROXY_PORT=
+```
+
+## 代理认证说明
+
+### SOCKS5代理认证
+
+SOCKS5代理支持用户名/密码认证。如果您的SOCKS5代理服务器需要认证，请在.env文件中添加：
+
+```bash
+TELEGRAM_PROXY_USERNAME=your_proxy_username
+TELEGRAM_PROXY_PASSWORD=your_proxy_password
+```
+
+### HTTP代理认证
+
+HTTP代理也支持基本认证。如果您的HTTP代理服务器需要认证，请在.env文件中添加：
+
+```bash
+TELEGRAM_PROXY_USERNAME=your_proxy_username
+TELEGRAM_PROXY_PASSWORD=your_proxy_password
 ```
 
 ## 推荐的SOCKS5代理部署方案
@@ -112,6 +138,9 @@ curl --socks5 your-proxy-server:1080 https://api.telegram.org
 
 # 测试HTTP代理
 curl --proxy http://your-proxy-server:8080 https://api.telegram.org
+
+# 测试带认证的代理
+curl --proxy http://username:password@your-proxy-server:8080 https://api.telegram.org
 ```
 
 ## 安全建议

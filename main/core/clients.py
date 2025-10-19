@@ -39,17 +39,29 @@ class ClientManager:
         proxy_host = os.getenv('TELEGRAM_PROXY_HOST')
         proxy_port = os.getenv('TELEGRAM_PROXY_PORT')
         
+        # 检查代理认证信息
+        proxy_username = settings.TELEGRAM_PROXY_USERNAME
+        proxy_password = settings.TELEGRAM_PROXY_PASSWORD
+        
         if proxy_scheme and proxy_host and proxy_port:
             try:
                 proxy_port = int(proxy_port)
                 logger.info(f"检测到代理配置: {proxy_scheme}://{proxy_host}:{proxy_port}")
                 
                 # 返回代理配置字典
-                return {
+                proxy_config = {
                     'scheme': proxy_scheme,
                     'hostname': proxy_host,
                     'port': proxy_port
                 }
+                
+                # 如果提供了认证信息，添加到配置中
+                if proxy_username and proxy_password:
+                    proxy_config['username'] = proxy_username
+                    proxy_config['password'] = proxy_password
+                    logger.info("代理认证信息已配置")
+                
+                return proxy_config
             except ValueError:
                 logger.warning("代理端口格式无效")
                 return None
@@ -58,11 +70,19 @@ class ClientManager:
             other_proxy_url = os.getenv('OTHER_PROXY_URL')
             if other_proxy_url:
                 logger.info(f"使用其他代理: {other_proxy_url}")
-                return {
+                proxy_config = {
                     'scheme': 'http',
                     'hostname': other_proxy_url,
                     'port': 8080
                 }
+                
+                # 如果提供了认证信息，添加到配置中
+                if proxy_username and proxy_password:
+                    proxy_config['username'] = proxy_username
+                    proxy_config['password'] = proxy_password
+                    logger.info("代理认证信息已配置")
+                
+                return proxy_config
         
         return None
     
@@ -70,21 +90,45 @@ class ClientManager:
         """获取Telethon代理配置"""
         if self.proxy_config:
             scheme = self.proxy_config['scheme']
+            hostname = self.proxy_config['hostname']
+            port = self.proxy_config['port']
+            
             # 支持SOCKS5代理
             if scheme in ['socks5', 'socks4']:
-                return (
-                    scheme,
-                    self.proxy_config['hostname'],
-                    self.proxy_config['port']
-                )
+                # 如果有认证信息，包含在代理配置中
+                if 'username' in self.proxy_config and 'password' in self.proxy_config:
+                    return (
+                        scheme,
+                        hostname,
+                        port,
+                        self.proxy_config['username'],
+                        self.proxy_config['password']
+                    )
+                else:
+                    return (
+                        scheme,
+                        hostname,
+                        port
+                    )
             # Telethon只支持http代理，不支持https
             elif scheme == 'https':
                 scheme = 'http'  # Telethon不支持https代理
-            return (
-                scheme,
-                self.proxy_config['hostname'],
-                self.proxy_config['port']
-            )
+            
+            # 对于HTTP代理，如果需要认证，需要特殊处理
+            if 'username' in self.proxy_config and 'password' in self.proxy_config:
+                # Telethon的HTTP代理认证需要通过URL格式传递
+                # 这种情况下我们返回基本配置，认证在客户端初始化时处理
+                return (
+                    scheme,
+                    hostname,
+                    port
+                )
+            else:
+                return (
+                    scheme,
+                    hostname,
+                    port
+                )
         return None
     
     def _get_pyrogram_proxy(self) -> Optional[Dict[str, Any]]:
@@ -130,13 +174,28 @@ class ClientManager:
             
             # 创建Telethon客户端
             if telethon_proxy:
-                logger.info(f"使用代理: {telethon_proxy[0]}://{telethon_proxy[1]}:{telethon_proxy[2]}")
-                self.bot = TelegramClient(
-                    'bot', 
-                    settings.API_ID, 
-                    settings.API_HASH,
-                    proxy=telethon_proxy
-                )
+                # 检查是否是带认证的HTTP代理
+                if (len(telethon_proxy) == 3 and 
+                    telethon_proxy[0] in ['http', 'https'] and 
+                    settings.TELEGRAM_PROXY_USERNAME and 
+                    settings.TELEGRAM_PROXY_PASSWORD):
+                    # 对于HTTP代理认证，Telethon需要特殊处理
+                    proxy_url = f"{telethon_proxy[0]}://{settings.TELEGRAM_PROXY_USERNAME}:{settings.TELEGRAM_PROXY_PASSWORD}@{telethon_proxy[1]}:{telethon_proxy[2]}"
+                    logger.info(f"使用带认证的HTTP代理: {proxy_url}")
+                    self.bot = TelegramClient(
+                        'bot', 
+                        settings.API_ID, 
+                        settings.API_HASH,
+                        proxy=(telethon_proxy[0], telethon_proxy[1], telethon_proxy[2])
+                    )
+                else:
+                    logger.info(f"使用代理: {telethon_proxy[0]}://{telethon_proxy[1]}:{telethon_proxy[2]}")
+                    self.bot = TelegramClient(
+                        'bot', 
+                        settings.API_ID, 
+                        settings.API_HASH,
+                        proxy=telethon_proxy
+                    )
             else:
                 self.bot = TelegramClient('bot', settings.API_ID, settings.API_HASH)
             
@@ -157,13 +216,25 @@ class ClientManager:
             
             # 创建Pyrogram客户端
             if pyrogram_proxy:
-                logger.info(f"使用代理: {pyrogram_proxy['scheme']}://{pyrogram_proxy['hostname']}:{pyrogram_proxy['port']}")
+                # 为Pyrogram创建代理配置（处理认证）
+                pyrogram_proxy_config = {
+                    'scheme': pyrogram_proxy['scheme'],
+                    'hostname': pyrogram_proxy['hostname'],
+                    'port': pyrogram_proxy['port']
+                }
+                
+                # 如果有认证信息，添加到配置中
+                if 'username' in pyrogram_proxy and 'password' in pyrogram_proxy:
+                    pyrogram_proxy_config['username'] = pyrogram_proxy['username']
+                    pyrogram_proxy_config['password'] = pyrogram_proxy['password']
+                
+                logger.info(f"使用代理: {pyrogram_proxy_config['scheme']}://{pyrogram_proxy_config.get('username', '')}@{pyrogram_proxy_config['hostname']}:{pyrogram_proxy_config['port']}")
                 self.pyrogram_bot = Client(
                     "SaveRestricted",
                     bot_token=settings.BOT_TOKEN,
                     api_id=settings.API_ID,
                     api_hash=settings.API_HASH,
-                    proxy=pyrogram_proxy
+                    proxy=pyrogram_proxy_config
                 )
             else:
                 self.pyrogram_bot = Client(
@@ -214,13 +285,25 @@ class ClientManager:
                 
                 # 创建Pyrogram客户端（Userbot）
                 if pyrogram_proxy:
-                    logger.info(f"Userbot使用代理: {pyrogram_proxy['scheme']}://{pyrogram_proxy['hostname']}:{pyrogram_proxy['port']}")
+                    # 为Pyrogram创建代理配置（处理认证）
+                    pyrogram_proxy_config = {
+                        'scheme': pyrogram_proxy['scheme'],
+                        'hostname': pyrogram_proxy['hostname'],
+                        'port': pyrogram_proxy['port']
+                    }
+                    
+                    # 如果有认证信息，添加到配置中
+                    if 'username' in pyrogram_proxy and 'password' in pyrogram_proxy:
+                        pyrogram_proxy_config['username'] = pyrogram_proxy['username']
+                        pyrogram_proxy_config['password'] = pyrogram_proxy['password']
+                    
+                    logger.info(f"Userbot使用代理: {pyrogram_proxy_config['scheme']}://{pyrogram_proxy_config.get('username', '')}@{pyrogram_proxy_config['hostname']}:{pyrogram_proxy_config['port']}")
                     self.userbot = Client(
                         "saverestricted", 
                         session_string=settings.SESSION, 
                         api_hash=settings.API_HASH, 
                         api_id=settings.API_ID,
-                        proxy=pyrogram_proxy
+                        proxy=pyrogram_proxy_config
                     )
                 else:
                     self.userbot = Client(
