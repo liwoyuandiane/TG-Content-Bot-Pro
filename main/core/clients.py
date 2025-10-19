@@ -133,15 +133,18 @@ class ClientManager:
             elif scheme in ['http', 'https']:
                 # Telethon的HTTP代理认证需要通过代理对象传递
                 if 'username' in self.proxy_config and 'password' in self.proxy_config:
-                    # 返回包含认证信息的元组
+                    # 返回包含认证信息的元组 (协议, 主机, 端口, 用户名, 密码)
                     return (
+                        'http',
                         hostname,
                         port,
                         self.proxy_config['username'],
                         self.proxy_config['password']
                     )
                 else:
+                    # 返回不包含认证信息的元组 (协议, 主机, 端口)
                     return (
+                        'http',
                         hostname,
                         port
                     )
