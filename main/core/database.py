@@ -171,7 +171,8 @@ class DatabaseManager:
     # ==================== 用户管理 ====================
     
     async def add_user(self, user_id: int, username: Optional[str] = None, 
-                      first_name: Optional[str] = None, last_name: Optional[str] = None) -> bool:
+                      first_name: Optional[str] = None, last_name: Optional[str] = None,
+                      is_authorized: bool = False) -> bool:
         """添加或更新用户
         
         Args:
@@ -179,6 +180,7 @@ class DatabaseManager:
             username: 用户名
             first_name: 名字
             last_name: 姓氏
+            is_authorized: 是否为授权用户
             
         Returns:
             bool: 操作是否成功
@@ -202,6 +204,7 @@ class DatabaseManager:
                         "$setOnInsert": {
                             "join_date": now,
                             "is_banned": False,
+                            "is_authorized": is_authorized,  # 添加授权字段
                             "total_downloads": 0,
                             "total_size": 0,
                             "last_download": None,
@@ -404,6 +407,95 @@ class DatabaseManager:
             except Exception as e:
                 logger.error(f"获取用户统计失败: {e}")
                 return None
+    
+    async def get_authorized_users(self) -> List[int]:
+        """获取所有授权用户ID列表
+        
+        Returns:
+            List[int]: 授权用户ID列表
+        """
+        async with self._lock:
+            if self.db is None:
+                return []
+            
+            try:
+                self._ensure_connection()
+                users = list(self.db.users.find({"is_authorized": True}, {"user_id": 1}))
+                return [user["user_id"] for user in users]
+            except Exception as e:
+                logger.error(f"获取授权用户列表失败: {e}")
+                return []
+    
+    async def authorize_user(self, user_id: int) -> bool:
+        """授权用户
+        
+        Args:
+            user_id: 用户ID
+            
+        Returns:
+            bool: 操作是否成功
+        """
+        async with self._lock:
+            if self.db is None:
+                return False
+            
+            try:
+                self._ensure_connection()
+                result = self.db.users.update_one(
+                    {"user_id": user_id},
+                    {"$set": {"is_authorized": True}}
+                )
+                return result.modified_count > 0
+            except Exception as e:
+                logger.error(f"授权用户失败: {e}")
+                return False
+    
+    async def unauthorize_user(self, user_id: int) -> bool:
+        """取消用户授权
+        
+        Args:
+            user_id: 用户ID
+            
+        Returns:
+            bool: 操作是否成功
+        """
+        async with self._lock:
+            if self.db is None:
+                return False
+            
+            try:
+                self._ensure_connection()
+                # 不能取消主用户的授权
+                from ..config import settings
+                if user_id in settings.get_auth_users():
+                    return False
+                
+                result = self.db.users.update_one(
+                    {"user_id": user_id},
+                    {"$set": {"is_authorized": False}}
+                )
+                return result.modified_count > 0
+            except Exception as e:
+                logger.error(f"取消用户授权失败: {e}")
+                return False
+    
+    async def is_user_authorized(self, user_id: int) -> bool:
+        """检查用户是否被授权
+        
+        Args:
+            user_id: 用户ID
+            
+        Returns:
+            bool: 用户是否被授权
+        """
+        # 首先检查是否为主用户
+        from ..config import settings
+        if user_id in settings.get_auth_users():
+            return True
+        
+        # 然后检查数据库中的授权状态
+        user = await self.get_user(user_id)
+        return user and user.get('is_authorized', False)
     
     async def get_download_history(self, user_id: int, limit: int = 10) -> List[Dict[str, Any]]:
         """获取用户下载历史

@@ -116,7 +116,7 @@ class StartPlugin(BasePlugin):
         logger.info(f"收到 /start 命令，用户ID: {user_id}, 授权ID: {settings.AUTH}")
         
         # 只允许授权用户使用
-        if not settings.is_user_authorized(user_id):
+        if not await user_service.is_user_authorized(user_id):
             logger.warning(f"未授权用户尝试使用机器人: {user_id}")
             return
         

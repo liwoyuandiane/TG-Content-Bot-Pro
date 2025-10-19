@@ -177,7 +177,19 @@ class Settings:
         Returns:
             True表示用户被授权，False表示未授权
         """
-        return user_id in self.get_auth_users()
+        # 首先检查环境变量中的授权用户
+        if user_id in self.get_auth_users():
+            return True
+        
+        # 然后检查数据库中的授权用户
+        try:
+            from ..services.user_service import user_service
+            # 注意：这是一个同步方法，不能直接调用异步方法
+            # 我们需要修改这个设计，将授权检查移到用户服务中
+            return user_id in self.get_auth_users()
+        except Exception:
+            # 如果数据库不可用，只检查环境变量
+            return user_id in self.get_auth_users()
     
     def get_traffic_limits(self) -> Dict[str, int]:
         """获取流量限制配置
