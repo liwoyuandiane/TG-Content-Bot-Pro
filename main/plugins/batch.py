@@ -21,7 +21,6 @@ class BatchPlugin(BasePlugin):
     def __init__(self):
         super().__init__("batch")
         self.batch_users = set()  # 正在进行批量任务的用户
-        self.batch_tasks: Dict[str, int] = {}  # 任务ID到用户ID的映射
     
     async def on_load(self):
         """插件加载时注册事件处理器"""
@@ -49,12 +48,7 @@ class BatchPlugin(BasePlugin):
             await event.reply("没有正在进行的批量任务。")
             return
         
-        # 取消用户的批量任务
-        for task_id, user_id in list(self.batch_tasks.items()):
-            if user_id == event.sender_id:
-                await download_task_manager.cancel_task(task_id)
-                break
-        
+        # 从批量用户集合中移除
         self.batch_users.discard(event.sender_id)
         await event.reply("已取消。")
     
@@ -113,22 +107,16 @@ class BatchPlugin(BasePlugin):
             
             self.batch_users.add(event.sender_id)
             
-            # 创建批量任务
-            task_id = await download_task_manager.create_batch_task(event.sender_id, link, value)
-            self.batch_tasks[task_id] = event.sender_id
-            
-            # 运行批量下载
+            # 直接运行批量下载（不通过任务队列）
             await self._run_batch(client_manager.userbot, client_manager.pyrogram_bot, 
-                                event.sender_id, link, value, task_id)
+                                event.sender_id, link, value)
             
             conv.cancel()
             self.batch_users.discard(event.sender_id)
-            if task_id in self.batch_tasks:
-                del self.batch_tasks[task_id]
     
     @handle_errors(default_return=False)
     async def _run_batch(self, userbot: Client, client: Client, sender: int, 
-                        link: str, range_count: int, task_id: str):
+                        link: str, range_count: int):
         """运行批量下载任务"""
         completed = 0
         failed = 0
@@ -136,36 +124,29 @@ class BatchPlugin(BasePlugin):
         for i in range(range_count):
             try:
                 if sender not in self.batch_users:
-                    await download_task_manager.complete_batch_task(task_id)
                     await client.send_message(sender, f"批量任务已完成。\n✅ 成功: {completed}\n❌ 失败: {failed}")
                     break
             except Exception as e:
                 self.logger.error(f"检查批量任务状态时出错: {e}")
-                await download_task_manager.complete_batch_task(task_id)
                 await client.send_message(sender, f"批量任务已完成。\n✅ 成功: {completed}\n❌ 失败: {failed}")
                 break
             
             try:
-                # 获取速率限制许可
-                # await rate_limiter.acquire()
-                
+                # 直接调用download_service，不经过任务队列
                 success = await download_service.download_message(userbot, client, client_manager.bot, sender, 0, link, i)
                 
                 if success:
                     completed += 1
-                    # await rate_limiter.on_success()
                 else:
                     failed += 1
                 
-                await download_task_manager.update_batch_progress(task_id, completed)
-                
             except FloodWait as fw:
                 if fw.value > 299:
-                    await download_task_manager.cancel_batch_task(task_id)
                     await client.send_message(sender, f"由于洪水等待超过5分钟，取消批量任务。\n✅ 成功: {completed}\n❌ 失败: {failed}")
                     break
                 
-                # await rate_limiter.on_flood_wait(fw.value)
+                # 等待FloodWait时间后重试
+                await asyncio.sleep(fw.value)
                 
                 try:
                     success = await download_service.download_message(userbot, client, client_manager.bot, sender, 0, link, i)
@@ -173,7 +154,6 @@ class BatchPlugin(BasePlugin):
                         completed += 1
                     else:
                         failed += 1
-                    await download_task_manager.update_batch_progress(task_id, completed)
                 except Exception as retry_error:
                     self.logger.error(f"重试失败: {retry_error}")
                     failed += 1
@@ -181,15 +161,13 @@ class BatchPlugin(BasePlugin):
             # 每5个文件或最后一批发送进度更新
             if (i + 1) % 5 == 0 or i == range_count - 1:
                 progress_pct = (completed + failed) * 100 // range_count
-                # current_rate = rate_limiter.rate
-                progress_msg = f"📊 进度: {completed + failed}/{range_count} ({progress_pct}%)\n✅ 成功: {completed}\n❌ 失败: {failed}\n⚡ 当前速率: 0.00/s"
+                progress_msg = f"📊 进度: {completed + failed}/{range_count} ({progress_pct}%)\n✅ 成功: {completed}\n❌ 失败: {failed}"
                 
                 try:
                     await client.send_message(sender, progress_msg)
                 except Exception:
                     pass
         
-        await download_task_manager.complete_batch_task(task_id)
         final_msg = f"🎉 批量任务完成！\n✅ 成功: {completed}\n❌ 失败: {failed}\n📊 总计: {range_count}"
         await client.send_message(sender, final_msg)
 
