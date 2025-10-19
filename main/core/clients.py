@@ -97,28 +97,44 @@ class ClientManager:
         if not proxy_config:
             return None
             
-        # 为Pyrogram创建代理配置（处理认证）
-        pyrogram_proxy_config = {
-            'scheme': proxy_config['scheme'],
-            'hostname': proxy_config['hostname'],
-            'port': proxy_config['port']
-        }
-        
-        # 如果有认证信息，添加到配置中
-        if 'username' in proxy_config and 'password' in proxy_config:
-            # Pyrogram可能不支持HTTP代理的用户名/密码认证
-            # 尝试使用URL格式的代理配置
-            if proxy_config['scheme'] in ['http', 'https']:
-                pyrogram_proxy_config = {
-                    'scheme': proxy_config['scheme'],
-                    'hostname': proxy_config['hostname'],
-                    'port': proxy_config['port'],
-                    'username': proxy_config['username'],
-                    'password': proxy_config['password']
-                }
-            else:
+        # 检查是否配置了SOCKS代理
+        scheme = proxy_config['scheme']
+        if scheme in ['socks5', 'socks4']:
+            # Pyrogram支持SOCKS代理
+            pyrogram_proxy_config = {
+                'scheme': scheme,
+                'hostname': proxy_config['hostname'],
+                'port': proxy_config['port']
+            }
+            
+            # 如果有认证信息，添加到配置中
+            if 'username' in proxy_config and 'password' in proxy_config:
                 pyrogram_proxy_config['username'] = proxy_config['username']
                 pyrogram_proxy_config['password'] = proxy_config['password']
+        else:
+            # 对于HTTP代理，尝试使用URL格式
+            # Pyrogram可能不支持HTTP代理的用户名/密码认证
+            pyrogram_proxy_config = {
+                'scheme': proxy_config['scheme'],
+                'hostname': proxy_config['hostname'],
+                'port': proxy_config['port']
+            }
+            
+            # 如果有认证信息，添加到配置中
+            if 'username' in proxy_config and 'password' in proxy_config:
+                # Pyrogram可能不支持HTTP代理的用户名/密码认证
+                # 尝试使用URL格式的代理配置
+                if proxy_config['scheme'] in ['http', 'https']:
+                    pyrogram_proxy_config = {
+                        'scheme': proxy_config['scheme'],
+                        'hostname': proxy_config['hostname'],
+                        'port': proxy_config['port'],
+                        'username': proxy_config['username'],
+                        'password': proxy_config['password']
+                    }
+                else:
+                    pyrogram_proxy_config['username'] = proxy_config['username']
+                    pyrogram_proxy_config['password'] = proxy_config['password']
         
         return pyrogram_proxy_config
     
