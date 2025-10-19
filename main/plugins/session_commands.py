@@ -66,12 +66,15 @@ class SessionPlugin(BasePlugin):
         if not session_string:
             return False, "SESSION字符串不能为空"
         
+        # 清理字符串，移除可能的空格、换行符等
+        cleaned_session = re.sub(r'\s+', '', session_string)
+        
         # 基本格式检查（Pyrogram session 字符串通常是 base64 编码）
-        if not re.match(r"^[A-Za-z0-9+/=]+$", session_string):
+        if not re.match(r"^[A-Za-z0-9+/=]+$", cleaned_session):
             return False, "SESSION字符串格式无效"
         
         # 长度检查
-        if len(session_string) < 50:
+        if len(cleaned_session) < 50:
             return False, "SESSION字符串长度不足"
         
         return True, "有效"
@@ -102,6 +105,10 @@ class SessionPlugin(BasePlugin):
                 await event.reply(f"❌ {message}")
                 return
             
+            # 使用清理后的 SESSION 字符串
+            import re
+            cleaned_session = re.sub(r'\s+', '', session_string)
+            
             # 添加用户
             user = await event.get_sender()
             await user_service.add_user(
@@ -112,7 +119,7 @@ class SessionPlugin(BasePlugin):
             )
             
             # 保存 SESSION
-            success = await session_service.save_session(event.sender_id, session_string)
+            success = await session_service.save_session(event.sender_id, cleaned_session)
             if success:
                 await event.reply(
                     "✅ SESSION 已保存到 MongoDB\n\n"
