@@ -22,6 +22,10 @@ class TrafficPlugin(BasePlugin):
             incoming=True, from_users=settings.AUTH, pattern='/traffic'))
         client_manager.bot.add_event_handler(self._total_traffic_stats, events.NewMessage(
             incoming=True, from_users=settings.AUTH, pattern='/totaltraffic'))
+        client_manager.bot.add_event_handler(self._bot_stats, events.NewMessage(
+            incoming=True, from_users=settings.AUTH, pattern='/stats'))
+        client_manager.bot.add_event_handler(self._download_history, events.NewMessage(
+            incoming=True, from_users=settings.AUTH, pattern='/history'))
         client_manager.bot.add_event_handler(self._set_traffic_limit, events.NewMessage(
             incoming=True, from_users=settings.AUTH, pattern='/setlimit'))
         client_manager.bot.add_event_handler(self._reset_traffic, events.NewMessage(
@@ -36,6 +40,10 @@ class TrafficPlugin(BasePlugin):
             incoming=True, from_users=settings.AUTH, pattern='/traffic'))
         client_manager.bot.remove_event_handler(self._total_traffic_stats, events.NewMessage(
             incoming=True, from_users=settings.AUTH, pattern='/totaltraffic'))
+        client_manager.bot.remove_event_handler(self._bot_stats, events.NewMessage(
+            incoming=True, from_users=settings.AUTH, pattern='/stats'))
+        client_manager.bot.remove_event_handler(self._download_history, events.NewMessage(
+            incoming=True, from_users=settings.AUTH, pattern='/history'))
         client_manager.bot.remove_event_handler(self._set_traffic_limit, events.NewMessage(
             incoming=True, from_users=settings.AUTH, pattern='/setlimit'))
         client_manager.bot.remove_event_handler(self._reset_traffic, events.NewMessage(
@@ -227,6 +235,72 @@ class TrafficPlugin(BasePlugin):
             return f"{bytes_value/(1024**2):.2f} MB"
         else:
             return f"{bytes_value/(1024**3):.2f} GB"
+    
+    async def _bot_stats(self, event):
+        """查看机器人统计信息（仅所有者）"""
+        try:
+            # 获取用户统计
+            total_users = await user_service.get_total_users()
+            
+            # 获取下载统计
+            total_downloads = await user_service.get_total_downloads()
+            
+            # 获取流量统计
+            total_traffic = await traffic_service.get_total_traffic()
+            
+            # 获取队列统计
+            from ..core.task_queue import task_queue
+            queue_stats = await task_queue.get_queue_stats()
+            
+            msg = "🤖 **机器人统计信息**\n\n"
+            msg += f"👥 用户总数: {total_users}\n"
+            msg += f"📥 总下载数: {total_downloads}\n\n"
+            
+            if total_traffic:
+                msg += f"📊 **总流量统计**\n"
+                msg += f"📥 下载: {self._format_bytes(total_traffic['total_download'])}\n"
+                msg += f"📤 上传: {self._format_bytes(total_traffic['total_upload'])}\n\n"
+            
+            msg += f"📋 **队列状态**\n"
+            msg += f"⏳ 等待中: {queue_stats['pending_tasks']}\n"
+            msg += f"▶️  运行中: {queue_stats['running_tasks']}\n"
+            
+            await event.reply(msg)
+        except Exception as e:
+            await event.reply(f"❌ 获取统计信息失败: {str(e)}")
+    
+    async def _download_history(self, event):
+        """查看下载历史（仅所有者）"""
+        try:
+            # 从数据库获取最近的下载历史
+            from ..core.database import db_manager
+            history = await db_manager.get_recent_download_history(20)  # 获取最近20条记录
+            
+            if not history:
+                await event.reply("📭 暂无下载历史")
+                return
+            
+            msg = "📜 **最近下载历史**\n\n"
+            
+            for record in history:
+                # 格式化时间
+                from datetime import datetime
+                if isinstance(record['timestamp'], str):
+                    timestamp = datetime.fromisoformat(record['timestamp'].replace('Z', '+00:00'))
+                else:
+                    timestamp = record['timestamp']
+                
+                # 格式化文件大小
+                file_size = self._format_bytes(record.get('file_size', 0))
+                
+                msg += f"📥 {timestamp.strftime('%m-%d %H:%M')}\n"
+                msg += f"   文件大小: {file_size}\n"
+                msg += f"   状态: {record.get('status', '未知')}\n"
+                msg += f"   类型: {record.get('media_type', '未知')}\n\n"
+            
+            await event.reply(msg)
+        except Exception as e:
+            await event.reply(f"❌ 获取下载历史失败: {str(e)}")
 
 # 创建插件实例并注册
 traffic_plugin = TrafficPlugin()

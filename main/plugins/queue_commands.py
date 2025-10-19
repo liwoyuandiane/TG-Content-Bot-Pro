@@ -32,8 +32,10 @@ class QueuePlugin(BasePlugin):
     
     async def _queue_status(self, event):
         """查看队列状态"""
-        queue_size = task_queue.get_queue_size()
-        running_count = task_queue.get_running_count()
+        # 获取队列统计信息
+        stats = await task_queue.get_queue_stats()
+        queue_size = stats["pending_tasks"]
+        running_count = stats["running_tasks"]
         available_tokens = rate_limiter.get_available_tokens()
         current_rate = rate_limiter.rate
         

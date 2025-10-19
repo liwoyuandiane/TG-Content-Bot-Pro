@@ -530,6 +530,39 @@ class DatabaseManager:
                 logger.error(f"获取下载历史失败: {e}")
                 return []
     
+    async def get_recent_download_history(self, limit: int = 20) -> List[Dict[str, Any]]:
+        """获取所有用户最近的下载历史
+        
+        Args:
+            limit: 返回记录数量限制
+            
+        Returns:
+            List[Dict[str, Any]]: 下载历史记录列表
+        """
+        async with self._lock:
+            if self.db is None:
+                return []
+            
+            try:
+                self._ensure_connection()
+                history = list(
+                    self.db.download_history.find({})
+                    .sort("download_date", -1)
+                    .limit(limit)
+                )
+                
+                return [{
+                    "message_link": h.get("message_link"),
+                    "media_type": h.get("media_type"),
+                    "file_size": h.get("file_size", 0),
+                    "download_date": h.get("download_date"),
+                    "status": h.get("status"),
+                    "user_id": h.get("user_id")
+                } for h in history]
+            except Exception as e:
+                logger.error(f"获取最近下载历史失败: {e}")
+                return []
+    
     async def get_total_downloads(self) -> int:
         """获取总下载数
         
