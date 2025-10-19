@@ -86,6 +86,25 @@ class ClientManager:
         
         return None
     
+    def _create_pyrogram_proxy_config(self, proxy_config: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+        """创建Pyrogram代理配置"""
+        if not proxy_config:
+            return None
+            
+        # 为Pyrogram创建代理配置（处理认证）
+        pyrogram_proxy_config = {
+            'scheme': proxy_config['scheme'],
+            'hostname': proxy_config['hostname'],
+            'port': proxy_config['port']
+        }
+        
+        # 如果有认证信息，添加到配置中
+        if 'username' in proxy_config and 'password' in proxy_config:
+            pyrogram_proxy_config['username'] = proxy_config['username']
+            pyrogram_proxy_config['password'] = proxy_config['password']
+        
+        return pyrogram_proxy_config
+    
     def _get_telethon_proxy(self) -> Optional[tuple]:
         """获取Telethon代理配置"""
         if self.proxy_config:
@@ -175,7 +194,7 @@ class ClientManager:
             # 创建Telethon客户端
             if telethon_proxy:
                 # 检查是否是带认证的HTTP代理
-                if (len(telethon_proxy) == 3 and 
+                if (len(telethon_proxy) >= 3 and 
                     telethon_proxy[0] in ['http', 'https'] and 
                     settings.TELEGRAM_PROXY_USERNAME and 
                     settings.TELEGRAM_PROXY_PASSWORD):
@@ -216,19 +235,9 @@ class ClientManager:
             
             # 创建Pyrogram客户端
             if pyrogram_proxy:
-                # 为Pyrogram创建代理配置（处理认证）
-                pyrogram_proxy_config = {
-                    'scheme': pyrogram_proxy['scheme'],
-                    'hostname': pyrogram_proxy['hostname'],
-                    'port': pyrogram_proxy['port']
-                }
-                
-                # 如果有认证信息，添加到配置中
-                if 'username' in pyrogram_proxy and 'password' in pyrogram_proxy:
-                    pyrogram_proxy_config['username'] = pyrogram_proxy['username']
-                    pyrogram_proxy_config['password'] = pyrogram_proxy['password']
-                
-                logger.info(f"使用代理: {pyrogram_proxy_config['scheme']}://{pyrogram_proxy_config.get('username', '')}@{pyrogram_proxy_config['hostname']}:{pyrogram_proxy_config['port']}")
+                pyrogram_proxy_config = self._create_pyrogram_proxy_config(pyrogram_proxy)
+                if pyrogram_proxy_config:
+                    logger.info(f"使用代理: {pyrogram_proxy_config['scheme']}://{pyrogram_proxy_config.get('username', '')}@{pyrogram_proxy_config['hostname']}:{pyrogram_proxy_config['port']}")
                 self.pyrogram_bot = Client(
                     "SaveRestricted",
                     bot_token=settings.BOT_TOKEN,
@@ -266,8 +275,9 @@ class ClientManager:
             if settings.SESSION:
                 # 验证SESSION格式并获取修正后的值
                 corrected_session = self._validate_and_fix_session(settings.SESSION)
-                # 即使验证失败，也尝试使用原始SESSION
-                if not corrected_session:
+                
+                # 如果SESSION验证失败，记录错误并继续使用原始SESSION
+                if corrected_session is None:
                     logger.warning("SESSION验证失败，将使用原始SESSION尝试初始化")
                     corrected_session = settings.SESSION
                 
@@ -285,19 +295,9 @@ class ClientManager:
                 
                 # 创建Pyrogram客户端（Userbot）
                 if pyrogram_proxy:
-                    # 为Pyrogram创建代理配置（处理认证）
-                    pyrogram_proxy_config = {
-                        'scheme': pyrogram_proxy['scheme'],
-                        'hostname': pyrogram_proxy['hostname'],
-                        'port': pyrogram_proxy['port']
-                    }
-                    
-                    # 如果有认证信息，添加到配置中
-                    if 'username' in pyrogram_proxy and 'password' in pyrogram_proxy:
-                        pyrogram_proxy_config['username'] = pyrogram_proxy['username']
-                        pyrogram_proxy_config['password'] = pyrogram_proxy['password']
-                    
-                    logger.info(f"Userbot使用代理: {pyrogram_proxy_config['scheme']}://{pyrogram_proxy_config.get('username', '')}@{pyrogram_proxy_config['hostname']}:{pyrogram_proxy_config['port']}")
+                    pyrogram_proxy_config = self._create_pyrogram_proxy_config(pyrogram_proxy)
+                    if pyrogram_proxy_config:
+                        logger.info(f"Userbot使用代理: {pyrogram_proxy_config['scheme']}://{pyrogram_proxy_config.get('username', '')}@{pyrogram_proxy_config['hostname']}:{pyrogram_proxy_config['port']}")
                     self.userbot = Client(
                         "saverestricted", 
                         session_string=settings.SESSION, 
@@ -397,48 +397,45 @@ class ClientManager:
         
         # 对于Pyrogram SESSION，直接返回原字符串（不做严格验证）
         # Pyrogram SESSION格式与Telethon不同，可能包含特殊字符
-        if session_string.startswith("1") or session_string.startswith("2") or session_string.startswith("3"):
+        if session_string.startswith(("1", "2", "3")):
             self.logger.info("检测到Pyrogram SESSION格式，跳过严格验证")
             return session_string
         
         # 对于其他SESSION，至少需要10个字符
         if len(session_string) < 10:
             self.logger.warning(f"SESSION长度不足: {len(session_string)} 字符")
-            # 即使长度不足，也返回原始SESSION以供尝试
-            return session_string
+            return None
         
-        # 清理字符串，移除所有非base64字符
-        import re
-        cleaned_session = re.sub(r'[^A-Za-z0-9+/=_-]', '', session_string)
-        
-        # URL-safe base64 转换为标准 base64
-        cleaned_session = cleaned_session.replace('-', '+').replace('_', '/')
-        
-        # 移除已有的等号，重新计算填充
-        cleaned_session = cleaned_session.rstrip('=')
-        
-        # 自动添加正确的填充（Base64长度必须是4的倍数）
-        padding_needed = (4 - len(cleaned_session) % 4) % 4
-        if padding_needed > 0:
-            cleaned_session += '=' * padding_needed
-            self.logger.info(f"SESSION已自动修复填充，添加了{padding_needed}个等号")
-        
-        # 验证是否符合Base64模式
-        if not re.match(r'^[A-Za-z0-9+/]*={0,2}$', cleaned_session):
-            self.logger.warning(f"SESSION不符合Base64模式: {cleaned_session[:50]}...")
-            # 即使格式不完全匹配，也返回原始SESSION以供尝试
-            return session_string
-        
-        # 尝试解码以验证格式
         try:
+            # 清理字符串，移除所有非base64字符
+            import re
+            cleaned_session = re.sub(r'[^A-Za-z0-9+/=_-]', '', session_string)
+            
+            # URL-safe base64 转换为标准 base64
+            cleaned_session = cleaned_session.replace('-', '+').replace('_', '/')
+            
+            # 移除已有的等号，重新计算填充
+            cleaned_session = cleaned_session.rstrip('=')
+            
+            # 自动添加正确的填充（Base64长度必须是4的倍数）
+            padding_needed = (4 - len(cleaned_session) % 4) % 4
+            if padding_needed > 0:
+                cleaned_session += '=' * padding_needed
+                self.logger.info(f"SESSION已自动修复填充，添加了{padding_needed}个等号")
+            
+            # 验证是否符合Base64模式
+            if not re.match(r'^[A-Za-z0-9+/]*={0,2}$', cleaned_session):
+                self.logger.warning(f"SESSION不符合Base64模式: {cleaned_session[:50]}...")
+                return None
+            
+            # 尝试解码以验证格式
             import base64
             base64.b64decode(cleaned_session)
             self.logger.info("SESSION验证通过")
             return cleaned_session
         except Exception as e:
-            self.logger.warning(f"SESSION解码失败: {e}")
-            # 即使解码失败，也返回原始SESSION以供尝试
-            return session_string
+            self.logger.warning(f"SESSION验证失败: {e}")
+            return None
     
     async def stop_clients(self):
         """停止所有客户端"""
@@ -465,8 +462,8 @@ class ClientManager:
         """刷新Userbot SESSION"""
         try:
             corrected_session = self._validate_and_fix_session(new_session)
-            # 即使验证失败，也尝试使用原始SESSION
-            if not corrected_session:
+            # 如果SESSION验证失败，记录错误并继续使用原始SESSION
+            if corrected_session is None:
                 logger.warning("SESSION验证失败，将使用原始SESSION尝试初始化")
                 corrected_session = new_session
             
