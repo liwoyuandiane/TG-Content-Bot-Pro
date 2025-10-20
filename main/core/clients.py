@@ -152,7 +152,7 @@ class ClientManager:
             port = self.proxy_config['port']
             
             # 支持SOCKS5代理
-            if scheme in ['socks5', 'socks4']:
+            if scheme in ['socks5', 'socks4', 'socks']:
                 # 如果有认证信息，包含在代理配置中
                 if 'username' in self.proxy_config and 'password' in self.proxy_config:
                     return (
