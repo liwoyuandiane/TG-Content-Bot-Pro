@@ -495,10 +495,16 @@ class ClientManager:
                         return
             else:
                 logger.warning("未配置SESSION，Userbot将以有限功能运行")
+                logger.info("提示：您可以使用以下命令来添加SESSION：")
+                logger.info("1. /addsession - 通过机器人命令添加SESSION")
+                logger.info("2. /generatesession - 在线生成SESSION字符串")
                 self.userbot = None
         except Exception as e:
             logger.error(f"Userbot启动失败: {e}")
             logger.warning("Userbot启动失败，但应用将继续运行")
+            logger.info("提示：您可以使用以下命令来添加或更新SESSION：")
+            logger.info("1. /addsession - 通过机器人命令添加SESSION")
+            logger.info("2. /generatesession - 在线生成SESSION字符串")
             self.userbot = None
     
     def _validate_and_fix_session(self, session_string: str) -> Optional[str]:
