@@ -13,6 +13,28 @@ from pathlib import Path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
+# 手动加载环境变量
+try:
+    from decouple import Config, RepositoryEnv
+    env_path = os.path.join(os.getcwd(), '.env')
+    if os.path.exists(env_path):
+        env_config = Config(RepositoryEnv(env_path))
+        
+        # 加载关键环境变量
+        env_vars = [
+            'TELEGRAM_PROXY_SCHEME', 'TELEGRAM_PROXY_HOST', 'TELEGRAM_PROXY_PORT',
+            'TELEGRAM_PROXY_USERNAME', 'TELEGRAM_PROXY_PASSWORD'
+        ]
+        
+        for key in env_vars:
+            try:
+                value = env_config(key)
+                os.environ[key] = str(value)
+            except Exception:
+                pass  # 变量不存在，跳过
+except Exception:
+    pass  # decouple库不可用，跳过
+
 # 导入项目模块
 try:
     from main.config import settings
