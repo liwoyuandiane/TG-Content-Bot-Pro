@@ -143,12 +143,18 @@ async def main_async():
         await startup()
         
         # 检查客户端是否已初始化
-        if client_manager.bot is not None:
+        if client_manager.bot is not None and client_manager.bot.is_connected():
             logger.info("🚀 机器人开始监听消息...")
             # 运行主客户端直到断开连接
             await client_manager.bot.run_until_disconnected()
         else:
-            logger.error("❌ 客户端未初始化，无法启动机器人")
+            logger.warning("⚠️ 客户端未初始化或未连接，机器人将以降级模式运行...")
+            # 保持应用运行，即使客户端未连接
+            try:
+                while True:
+                    await asyncio.sleep(60)  # 每分钟检查一次
+            except KeyboardInterrupt:
+                logger.info("收到中断信号，正在关闭...")
             
     except KeyboardInterrupt:
         logger.info("收到中断信号，正在关闭...")
