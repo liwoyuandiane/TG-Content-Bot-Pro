@@ -486,6 +486,9 @@ class ClientManager:
                             # 没有备用SESSION可用或SESSION相同
                             # 即使出错也继续运行，Userbot不是必需的
                             logger.warning("Userbot启动失败，但应用将继续运行")
+                            logger.info("提示：您可以使用以下命令来添加SESSION：")
+                            logger.info("1. /addsession - 通过机器人命令添加SESSION")
+                            logger.info("2. /generatesession - 在线生成SESSION字符串")
                             self.userbot = None
                             return
                     else:
