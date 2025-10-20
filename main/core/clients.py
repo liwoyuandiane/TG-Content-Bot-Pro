@@ -39,6 +39,10 @@ class ClientManager:
         proxy_host = os.getenv('TELEGRAM_PROXY_HOST')
         proxy_port = os.getenv('TELEGRAM_PROXY_PORT')
         
+        # 如果scheme是'socks'，转换为'socks5'
+        if proxy_scheme == 'socks':
+            proxy_scheme = 'socks5'
+        
         # 检查代理认证信息（使用settings配置）
         proxy_username = settings.TELEGRAM_PROXY_USERNAME
         proxy_password = settings.TELEGRAM_PROXY_PASSWORD
