@@ -157,6 +157,16 @@ EOF_TEST
     echo "🚀 启动机器人..."
     echo ""
     
+    # 检查是否需要测试代理
+    if [ "$TEST_PROXY" = "1" ]; then
+        echo "🧪 测试代理配置..."
+        python3 test_proxy.py
+        if [ $? -ne 0 ]; then
+            echo "⚠️  代理测试失败，但仍继续启动机器人"
+        fi
+        echo ""
+    fi
+    
     # 启动机器人
     python3 -m main
 }

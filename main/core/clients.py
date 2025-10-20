@@ -296,7 +296,11 @@ class ClientManager:
                 # 尝试使用环境变量设置代理
                 if pyrogram_proxy_config and pyrogram_proxy_config['scheme'] in ['http', 'https']:
                     import os
-                    proxy_url = f"{pyrogram_proxy_config['scheme']}://{pyrogram_proxy_config.get('username', '')}:{pyrogram_proxy_config.get('password', '')}@{pyrogram_proxy_config['hostname']}:{pyrogram_proxy_config['port']}"
+                    # 检查是否有认证信息
+                    if pyrogram_proxy_config.get('username') and pyrogram_proxy_config.get('password'):
+                        proxy_url = f"{pyrogram_proxy_config['scheme']}://{pyrogram_proxy_config['username']}:{pyrogram_proxy_config['password']}@{pyrogram_proxy_config['hostname']}:{pyrogram_proxy_config['port']}"
+                    else:
+                        proxy_url = f"{pyrogram_proxy_config['scheme']}://{pyrogram_proxy_config['hostname']}:{pyrogram_proxy_config['port']}"
                     os.environ['HTTP_PROXY'] = proxy_url
                     os.environ['HTTPS_PROXY'] = proxy_url
                     logger.info(f"通过环境变量设置代理: {proxy_url}")
@@ -374,7 +378,11 @@ class ClientManager:
                     # 尝试使用环境变量设置代理
                     if pyrogram_proxy_config and pyrogram_proxy_config['scheme'] in ['http', 'https']:
                         import os
-                        proxy_url = f"{pyrogram_proxy_config['scheme']}://{pyrogram_proxy_config.get('username', '')}:{pyrogram_proxy_config.get('password', '')}@{pyrogram_proxy_config['hostname']}:{pyrogram_proxy_config['port']}"
+                        # 检查是否有认证信息
+                        if pyrogram_proxy_config.get('username') and pyrogram_proxy_config.get('password'):
+                            proxy_url = f"{pyrogram_proxy_config['scheme']}://{pyrogram_proxy_config['username']}:{pyrogram_proxy_config['password']}@{pyrogram_proxy_config['hostname']}:{pyrogram_proxy_config['port']}"
+                        else:
+                            proxy_url = f"{pyrogram_proxy_config['scheme']}://{pyrogram_proxy_config['hostname']}:{pyrogram_proxy_config['port']}"
                         os.environ['HTTP_PROXY'] = proxy_url
                         os.environ['HTTPS_PROXY'] = proxy_url
                         logger.info(f"通过环境变量设置代理: {proxy_url}")

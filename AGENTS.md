@@ -181,7 +181,7 @@ The bot supports both SOCKS5 and HTTP proxies with optional authentication:
    TELEGRAM_PROXY_PASSWORD=your_password
    ```
 
-For more detailed proxy configuration instructions, see `SOCKS5_PROXY_SOLUTION.md`.
+For more detailed proxy configuration instructions, see `PROXY_CONFIGURATION.md` or `SOCKS5_PROXY_SOLUTION.md`.
 
 ## Environment Variables
 
