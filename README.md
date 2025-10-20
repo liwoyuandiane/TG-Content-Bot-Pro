@@ -72,6 +72,8 @@ cd ~/TG-Content-Bot-Pro
 | TELEGRAM_PROXY_SCHEME | Telegram代理协议 | [SOCKS5_PROXY_SOLUTION.md](SOCKS5_PROXY_SOLUTION.md) | ❌ |
 | TELEGRAM_PROXY_HOST | Telegram代理主机 | [SOCKS5_PROXY_SOLUTION.md](SOCKS5_PROXY_SOLUTION.md) | ❌ |
 | TELEGRAM_PROXY_PORT | Telegram代理端口 | [SOCKS5_PROXY_SOLUTION.md](SOCKS5_PROXY_SOLUTION.md) | ❌ |
+| TELEGRAM_PROXY_USERNAME | Telegram代理用户名 | 代理认证用户名 | ❌ |
+| TELEGRAM_PROXY_PASSWORD | Telegram代理密码 | 代理认证密码 | ❌ |
 
 ---
 
@@ -95,6 +97,18 @@ docker-compose up -d
 docker-compose logs -f
 ```
 
+### 测试代理配置
+
+项目包含一个代理测试脚本，可以帮助您验证代理配置是否正确：
+
+```bash
+# 运行代理测试
+python3 test_proxy.py
+
+# 或者使用启动脚本测试代理
+TEST_PROXY=1 ./start.sh
+```
+
 ### 手动部署
 
 ```bash
@@ -116,6 +130,30 @@ nano .env  # 编辑配置
 # 启动机器人
 python3 -m main
 ```
+
+### 代理配置
+
+机器人支持 SOCKS5 和 HTTP 代理，以解决网络连接问题：
+
+1. **SOCKS5 代理配置**：
+   ```bash
+   TELEGRAM_PROXY_SCHEME=socks5
+   TELEGRAM_PROXY_HOST=154.201.86.151
+   TELEGRAM_PROXY_PORT=38512
+   TELEGRAM_PROXY_USERNAME=Ue9h0D55LS
+   TELEGRAM_PROXY_PASSWORD=CaqlJmzRWc
+   ```
+
+2. **HTTP 代理配置**：
+   ```bash
+   TELEGRAM_PROXY_SCHEME=http
+   TELEGRAM_PROXY_HOST=154.201.86.151
+   TELEGRAM_PROXY_PORT=19496
+   TELEGRAM_PROXY_USERNAME=wCBcuVZXd6
+   TELEGRAM_PROXY_PASSWORD=XM1Xdwey02
+   ```
+
+详细配置说明请参考 [PROXY_CONFIGURATION.md](PROXY_CONFIGURATION.md)。
 
 ---
 
