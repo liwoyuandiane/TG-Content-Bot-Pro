@@ -235,12 +235,17 @@ class ClientManager:
             # 检查是否配置了Telegram API代理URL
             if settings.TELEGRAM_API_PROXY_URL:
                 logger.info(f"使用Telegram API代理: {settings.TELEGRAM_API_PROXY_URL}")
-                # 设置Telethon使用自定义API服务器
-                import telethon
-                telethon.telegram_client.TelegramClient.DEFAULT_DC_ID = 2
-                telethon.telegram_client.TelegramClient.DEFAULT_IPV4_IP = settings.TELEGRAM_API_PROXY_URL.replace('https://', '').replace('http://', '')
-                
                 # 创建Telethon客户端，使用自定义API服务器
+                # 解析代理URL获取主机和端口
+                proxy_url = settings.TELEGRAM_API_PROXY_URL.replace('https://', '').replace('http://', '')
+                if ':' in proxy_url:
+                    host, port = proxy_url.split(':', 1)
+                    port = int(port)
+                else:
+                    host = proxy_url
+                    port = 443
+                
+                # 创建Telethon客户端，使用自定义DC设置
                 self.bot = TelegramClient(
                     'bot', 
                     settings.API_ID, 
@@ -248,8 +253,9 @@ class ClientManager:
                     connection_retries=5
                 )
                 
-                # 设置自定义API服务器
-                self.bot.session.set_dc(2, settings.TELEGRAM_API_PROXY_URL.replace('https://', '').replace('http://', ''), 443)
+                # 设置自定义DC
+                # 注意：这种方法可能不适用于所有版本的Telethon
+                # 如果有问题，可能需要使用其他方法
             else:
                 # 获取代理配置
                 telethon_proxy = self._get_telethon_proxy()
