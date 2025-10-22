@@ -153,6 +153,17 @@ python3 -m main
    TELEGRAM_PROXY_PASSWORD=XM1Xdwey02
    ```
 
+3. **Cloudflare Workers Telegram API 代理**：
+   如果您的服务器无法直接连接到 Telegram API，可以部署 Cloudflare Workers 作为代理：
+   
+   - 部署 `cloudflare-worker.js` 到 Cloudflare Workers
+   - 在 `.env` 文件中配置：
+   ```bash
+   TELEGRAM_API_PROXY_URL=https://your-worker.your-account.workers.dev
+   ```
+   
+   详细配置说明请参考 [CLOUDFLARE-WORKER-DEPLOY.md](CLOUDFLARE-WORKER-DEPLOY.md)。
+
 详细配置说明请参考 [PROXY_CONFIGURATION.md](PROXY_CONFIGURATION.md)。
 
 ---
