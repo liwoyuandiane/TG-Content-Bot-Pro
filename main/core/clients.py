@@ -319,13 +319,19 @@ class ClientManager:
             # 检查是否配置了Telegram API代理URL
             if settings.TELEGRAM_API_PROXY_URL:
                 logger.info(f"使用Telegram API代理: {settings.TELEGRAM_API_PROXY_URL}")
-                # 创建Pyrogram客户端，使用自定义API服务器
+                # 对于Pyrogram，我们使用环境变量设置代理而不是bot_api_url参数
+                import os
+                # 设置HTTP代理环境变量
+                os.environ['HTTP_PROXY'] = settings.TELEGRAM_API_PROXY_URL
+                os.environ['HTTPS_PROXY'] = settings.TELEGRAM_API_PROXY_URL
+                logger.info(f"通过环境变量设置Pyrogram代理: {settings.TELEGRAM_API_PROXY_URL}")
+                
+                # 创建Pyrogram客户端
                 self.pyrogram_bot = Client(
                     "SaveRestricted",
                     bot_token=settings.BOT_TOKEN,
                     api_id=settings.API_ID,
-                    api_hash=settings.API_HASH,
-                    bot_api_url=settings.TELEGRAM_API_PROXY_URL
+                    api_hash=settings.API_HASH
                 )
             else:
                 # 获取代理配置
