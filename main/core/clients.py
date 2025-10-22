@@ -34,12 +34,6 @@ class ClientManager:
         
     def _get_proxy_config(self) -> Optional[Dict[str, Any]]:
         """获取代理配置"""
-        # 检查是否配置了Telegram API代理URL
-        if settings.TELEGRAM_API_PROXY_URL:
-            logger.info(f"使用Telegram API代理: {settings.TELEGRAM_API_PROXY_URL}")
-            # 如果配置了API代理URL，则不使用其他代理配置
-            return None
-        
         # 检查环境变量中的代理配置
         proxy_scheme = os.getenv('TELEGRAM_PROXY_SCHEME')
         proxy_host = os.getenv('TELEGRAM_PROXY_HOST')
@@ -232,77 +226,54 @@ class ClientManager:
             masked_token = security_manager.mask_sensitive_data(settings.BOT_TOKEN, 10)
             logger.info(f"正在启动Telethon bot客户端 (Token: {masked_token})")
             
-            # 检查是否配置了Telegram API代理URL
-            if settings.TELEGRAM_API_PROXY_URL:
-                logger.info(f"使用Telegram API代理: {settings.TELEGRAM_API_PROXY_URL}")
-                # 创建Telethon客户端
-                self.bot = TelegramClient(
-                    'bot', 
-                    settings.API_ID, 
-                    settings.API_HASH,
-                    connection_retries=5
-                )
-                
-                # 解析代理URL获取主机和端口
-                proxy_url = settings.TELEGRAM_API_PROXY_URL.replace('https://', '').replace('http://', '')
-                if ':' in proxy_url:
-                    host, port = proxy_url.split(':', 1)
-                    port = int(port)
+            # 获取代理配置
+            telethon_proxy = self._get_telethon_proxy()
+            
+            # 创建Telethon客户端
+            if telethon_proxy:
+                # 检查代理类型
+                if isinstance(telethon_proxy, dict):
+                    # 字典格式代理（HTTP代理推荐使用）
+                    logger.info(f"使用带认证的HTTP代理: {telethon_proxy['addr']}:{telethon_proxy['port']} with auth")
+                    self.bot = TelegramClient(
+                        'bot', 
+                        settings.API_ID, 
+                        settings.API_HASH,
+                        proxy=telethon_proxy,
+                        connection_retries=5
+                    )
+                elif len(telethon_proxy) >= 5 and telethon_proxy[0] in ['socks5', 'socks4']:
+                    # SOCKS代理带认证
+                    logger.info(f"使用带认证的SOCKS代理: {telethon_proxy[1]}:{telethon_proxy[2]} with auth")
+                    self.bot = TelegramClient(
+                        'bot', 
+                        settings.API_ID, 
+                        settings.API_HASH,
+                        proxy=telethon_proxy,
+                        connection_retries=5
+                    )
+                elif len(telethon_proxy) >= 3:
+                    # 不带认证的代理
+                    logger.info(f"使用代理: {telethon_proxy[1]}:{telethon_proxy[2]}")
+                    self.bot = TelegramClient(
+                        'bot', 
+                        settings.API_ID, 
+                        settings.API_HASH,
+                        proxy=telethon_proxy,
+                        connection_retries=5
+                    )
                 else:
-                    host = proxy_url
-                    port = 443
-                
-                # 设置自定义API服务器
-                self.bot.session.set_dc(2, host, port)
+                    # 默认情况
+                    logger.info(f"使用代理: {telethon_proxy}")
+                    self.bot = TelegramClient(
+                        'bot', 
+                        settings.API_ID, 
+                        settings.API_HASH,
+                        proxy=telethon_proxy,
+                        connection_retries=5
+                    )
             else:
-                # 获取代理配置
-                telethon_proxy = self._get_telethon_proxy()
-                
-                # 创建Telethon客户端
-                if telethon_proxy:
-                    # 检查代理类型
-                    if isinstance(telethon_proxy, dict):
-                        # 字典格式代理（HTTP代理推荐使用）
-                        logger.info(f"使用带认证的HTTP代理: {telethon_proxy['addr']}:{telethon_proxy['port']} with auth")
-                        self.bot = TelegramClient(
-                            'bot', 
-                            settings.API_ID, 
-                            settings.API_HASH,
-                            proxy=telethon_proxy,
-                            connection_retries=5
-                        )
-                    elif len(telethon_proxy) >= 5 and telethon_proxy[0] in ['socks5', 'socks4']:
-                        # SOCKS代理带认证
-                        logger.info(f"使用带认证的SOCKS代理: {telethon_proxy[1]}:{telethon_proxy[2]} with auth")
-                        self.bot = TelegramClient(
-                            'bot', 
-                            settings.API_ID, 
-                            settings.API_HASH,
-                            proxy=telethon_proxy,
-                            connection_retries=5
-                        )
-                    elif len(telethon_proxy) >= 3:
-                        # 不带认证的代理
-                        logger.info(f"使用代理: {telethon_proxy[1]}:{telethon_proxy[2]}")
-                        self.bot = TelegramClient(
-                            'bot', 
-                            settings.API_ID, 
-                            settings.API_HASH,
-                            proxy=telethon_proxy,
-                            connection_retries=5
-                        )
-                    else:
-                        # 默认情况
-                        logger.info(f"使用代理: {telethon_proxy}")
-                        self.bot = TelegramClient(
-                            'bot', 
-                            settings.API_ID, 
-                            settings.API_HASH,
-                            proxy=telethon_proxy,
-                            connection_retries=5
-                        )
-                else:
-                    self.bot = TelegramClient('bot', settings.API_ID, settings.API_HASH, connection_retries=5)
+                self.bot = TelegramClient('bot', settings.API_ID, settings.API_HASH, connection_retries=5)
             
             logger.info("Telethon bot客户端初始化完成")
         except Exception as e:
@@ -316,68 +287,50 @@ class ClientManager:
             masked_token = security_manager.mask_sensitive_data(settings.BOT_TOKEN, 10)
             logger.info(f"正在启动Pyrogram bot客户端 (Token: {masked_token})")
             
-            # 检查是否配置了Telegram API代理URL
-            if settings.TELEGRAM_API_PROXY_URL:
-                logger.info(f"使用Telegram API代理: {settings.TELEGRAM_API_PROXY_URL}")
-                # 对于Pyrogram，我们使用环境变量设置代理而不是bot_api_url参数
-                import os
-                # 设置HTTP代理环境变量
-                os.environ['HTTP_PROXY'] = settings.TELEGRAM_API_PROXY_URL
-                os.environ['HTTPS_PROXY'] = settings.TELEGRAM_API_PROXY_URL
-                logger.info(f"通过环境变量设置Pyrogram代理: {settings.TELEGRAM_API_PROXY_URL}")
+            # 获取代理配置
+            pyrogram_proxy = self._get_pyrogram_proxy()
+            
+            # 创建Pyrogram客户端
+            if pyrogram_proxy:
+                pyrogram_proxy_config = self._create_pyrogram_proxy_config(pyrogram_proxy)
+                if pyrogram_proxy_config:
+                    logger.info(f"使用代理: {pyrogram_proxy_config['scheme']}://{pyrogram_proxy_config.get('username', '')}@{pyrogram_proxy_config['hostname']}:{pyrogram_proxy_config['port']}")
                 
-                # 创建Pyrogram客户端
-                self.pyrogram_bot = Client(
-                    "SaveRestricted",
-                    bot_token=settings.BOT_TOKEN,
-                    api_id=settings.API_ID,
-                    api_hash=settings.API_HASH
-                )
-            else:
-                # 获取代理配置
-                pyrogram_proxy = self._get_pyrogram_proxy()
-                
-                # 创建Pyrogram客户端
-                if pyrogram_proxy:
-                    pyrogram_proxy_config = self._create_pyrogram_proxy_config(pyrogram_proxy)
-                    if pyrogram_proxy_config:
-                        logger.info(f"使用代理: {pyrogram_proxy_config['scheme']}://{pyrogram_proxy_config.get('username', '')}@{pyrogram_proxy_config['hostname']}:{pyrogram_proxy_config['port']}")
-                    
-                    # 对于HTTP代理认证，Pyrogram可能不支持通过proxy参数传递
-                    # 尝试使用环境变量设置代理
-                    if pyrogram_proxy_config and pyrogram_proxy_config['scheme'] in ['http', 'https']:
-                        import os
-                        # 检查是否有认证信息
-                        if pyrogram_proxy_config.get('username') and pyrogram_proxy_config.get('password'):
-                            proxy_url = f"{pyrogram_proxy_config['scheme']}://{pyrogram_proxy_config['username']}:{pyrogram_proxy_config['password']}@{pyrogram_proxy_config['hostname']}:{pyrogram_proxy_config['port']}"
-                        else:
-                            proxy_url = f"{pyrogram_proxy_config['scheme']}://{pyrogram_proxy_config['hostname']}:{pyrogram_proxy_config['port']}"
-                        os.environ['HTTP_PROXY'] = proxy_url
-                        os.environ['HTTPS_PROXY'] = proxy_url
-                        logger.info(f"通过环境变量设置代理: {proxy_url}")
-                        # 不传递proxy参数，让Pyrogram使用环境变量
-                        self.pyrogram_bot = Client(
-                            "SaveRestricted",
-                            bot_token=settings.BOT_TOKEN,
-                            api_id=settings.API_ID,
-                            api_hash=settings.API_HASH
-                        )
+                # 对于HTTP代理认证，Pyrogram可能不支持通过proxy参数传递
+                # 尝试使用环境变量设置代理
+                if pyrogram_proxy_config and pyrogram_proxy_config['scheme'] in ['http', 'https']:
+                    import os
+                    # 检查是否有认证信息
+                    if pyrogram_proxy_config.get('username') and pyrogram_proxy_config.get('password'):
+                        proxy_url = f"{pyrogram_proxy_config['scheme']}://{pyrogram_proxy_config['username']}:{pyrogram_proxy_config['password']}@{pyrogram_proxy_config['hostname']}:{pyrogram_proxy_config['port']}"
                     else:
-                        # 对于SOCKS代理或其他情况，正常使用proxy参数
-                        self.pyrogram_bot = Client(
-                            "SaveRestricted",
-                            bot_token=settings.BOT_TOKEN,
-                            api_id=settings.API_ID,
-                            api_hash=settings.API_HASH,
-                            proxy=pyrogram_proxy_config
-                        )
-                else:
+                        proxy_url = f"{pyrogram_proxy_config['scheme']}://{pyrogram_proxy_config['hostname']}:{pyrogram_proxy_config['port']}"
+                    os.environ['HTTP_PROXY'] = proxy_url
+                    os.environ['HTTPS_PROXY'] = proxy_url
+                    logger.info(f"通过环境变量设置代理: {proxy_url}")
+                    # 不传递proxy参数，让Pyrogram使用环境变量
                     self.pyrogram_bot = Client(
                         "SaveRestricted",
                         bot_token=settings.BOT_TOKEN,
                         api_id=settings.API_ID,
                         api_hash=settings.API_HASH
                     )
+                else:
+                    # 对于SOCKS代理或其他情况，正常使用proxy参数
+                    self.pyrogram_bot = Client(
+                        "SaveRestricted",
+                        bot_token=settings.BOT_TOKEN,
+                        api_id=settings.API_ID,
+                        api_hash=settings.API_HASH,
+                        proxy=pyrogram_proxy_config
+                    )
+            else:
+                self.pyrogram_bot = Client(
+                    "SaveRestricted",
+                    bot_token=settings.BOT_TOKEN,
+                    api_id=settings.API_ID,
+                    api_hash=settings.API_HASH
+                )
             
             logger.info("Pyrogram bot客户端初始化完成")
         except Exception as e:

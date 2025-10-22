@@ -44,9 +44,6 @@ class Settings:
         self.FORCESUB: Optional[str] = self._get_config("FORCESUB", default=None, cast=str)
         self.AUTH: int = self._get_config("AUTH", cast=int)
         
-        # Telegram API 代理配置
-        self.TELEGRAM_API_PROXY_URL: Optional[str] = self._get_config("TELEGRAM_API_PROXY_URL", default=None, cast=str)
-        
         # 代理配置（带认证）
         self.TELEGRAM_PROXY_USERNAME: Optional[str] = self._get_config("TELEGRAM_PROXY_USERNAME", default=None, cast=str)
         self.TELEGRAM_PROXY_PASSWORD: Optional[str] = self._get_config("TELEGRAM_PROXY_PASSWORD", default=None, cast=str)
@@ -223,9 +220,6 @@ class Settings:
             "SESSION": self.SESSION,
             "FORCESUB": self.FORCESUB,
             "AUTH": self.AUTH,
-            "TELEGRAM_API_PROXY_URL": self.TELEGRAM_API_PROXY_URL,
-            "TELEGRAM_PROXY_USERNAME": self.TELEGRAM_PROXY_USERNAME,
-            "TELEGRAM_PROXY_PASSWORD": self.TELEGRAM_PROXY_PASSWORD,
             "MONGO_DB": self.MONGO_DB,
             "ENCRYPTION_KEY": self.ENCRYPTION_KEY,
             "MAX_WORKERS": self.MAX_WORKERS,
