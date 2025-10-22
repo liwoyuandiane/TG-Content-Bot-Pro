@@ -122,7 +122,7 @@ class SimpleDatabaseManager:
     
     def initialize_collections(self):
         """初始化数据库集合和默认数据"""
-        if not self.db:
+        if self.db is None:
             logger.error("数据库未连接")
             return False
             
