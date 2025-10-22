@@ -452,29 +452,6 @@ class ClientManager:
                         logger.info("2. /generatesession - 在线生成SESSION字符串")
                         self.userbot = None
                         return
-                            
-                            # 再次尝试启动
-                            try:
-                                await self.userbot.start()
-                                logger.info("使用数据库SESSION启动Userbot客户端成功")
-                            except Exception as db_start_error:
-                                logger.error(f"使用数据库SESSION启动Userbot客户端失败: {db_start_error}")
-                                self.userbot = None
-                                return
-                        else:
-                            # 没有备用SESSION可用或SESSION相同
-                            # 即使出错也继续运行，Userbot不是必需的
-                            logger.warning("Userbot启动失败，但应用将继续运行")
-                            logger.info("提示：您可以使用以下命令来添加SESSION：")
-                            logger.info("1. /addsession - 通过机器人命令添加SESSION")
-                            logger.info("2. /generatesession - 在线生成SESSION字符串")
-                            self.userbot = None
-                            return
-                    else:
-                        # 其他情况直接抛出错误
-                        logger.warning("Userbot启动失败，但应用将继续运行")
-                        self.userbot = None
-                        return
             else:
                 logger.warning("未配置SESSION，Userbot将以有限功能运行")
                 logger.info("提示：您可以使用以下命令来添加SESSION：")
