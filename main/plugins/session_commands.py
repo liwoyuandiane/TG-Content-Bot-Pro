@@ -66,15 +66,31 @@ class SessionPlugin(BasePlugin):
         if not session_string:
             return False, "SESSION字符串不能为空"
         
-        # 更彻底的清理字符串，移除所有非base64字符
-        cleaned_session = re.sub(r'[^A-Za-z0-9+/=]', '', session_string)
+        # 清理字符串，移除所有非base64字符，但保留换行符和空格以便后续处理
+        import re
+        # 先保存原始字符串用于显示
+        original_length = len(session_string)
+        # 清理字符串，但更宽松地处理
+        cleaned_session = re.sub(r'[^\w+/=\n\r\-_ ]', '', session_string)
+        # 移除多余的空格和换行符，但保留base64结构
+        cleaned_session = re.sub(r'[^A-Za-z0-9+/=_\-]', '', cleaned_session)
+        
+        # URL-safe base64 转换为标准 base64
+        cleaned_session = cleaned_session.replace('-', '+').replace('_', '/')
+        
+        # 移除已有的等号，重新计算填充
+        cleaned_session = cleaned_session.rstrip('=')
+        
+        # 自动添加正确的填充（Base64长度必须是4的倍数）
+        padding_needed = (4 - len(cleaned_session) % 4) % 4
+        if padding_needed > 0:
+            cleaned_session += '=' * padding_needed
         
         # 基本长度检查
         if len(cleaned_session) < 50:
-            return False, "SESSION字符串长度不足"
+            return False, f"SESSION字符串长度不足: {len(cleaned_session)} 字符"
         
-        # 对于可能被截断的字符串，我们采用更宽松的验证
-        # 只要清理后的字符串看起来像Base64格式即可
+        # 验证是否符合Base64模式
         if re.match(r'^[A-Za-z0-9+/]*={0,2}$', cleaned_session):
             return True, "有效"
         
