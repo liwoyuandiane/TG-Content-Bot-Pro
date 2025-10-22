@@ -427,19 +427,31 @@ class ClientManager:
                     session_errors = ["unpack requires a buffer", "invalid session", "session expired", "session revoked", "session invalid", "auth key not found", "404", "old session", "session string"]
                     is_session_error = any(err in error_msg for err in session_errors)
                     
-                    # 如果是SESSION错误或使用.env中的SESSION且启动失败，尝试从数据库获取SESSION
-                    if is_session_error or (original_session and original_session == settings.SESSION):
-                        logger.info("尝试从数据库获取备用SESSION...")
-                        db_session = await self.session_svc.get_session(settings.AUTH)
-                        if db_session and db_session != settings.SESSION:
-                            logger.info("切换到数据库中的SESSION")
-                            # 停止当前尝试
-                            if self.userbot:
-                                try:
-                                    await self.userbot.stop()
-                                except:
-                                    pass
-                                self.userbot = None
+                    # 如果是SESSION错误，自动删除失效的SESSION
+                    if is_session_error:
+                        logger.warning("检测到SESSION错误，正在自动删除失效的SESSION...")
+                        try:
+                            # 删除数据库中的SESSION
+                            delete_result = await self.session_svc.delete_session(settings.AUTH)
+                            if delete_result:
+                                logger.info(f"已自动删除用户 {settings.AUTH} 的失效SESSION")
+                            else:
+                                logger.warning(f"删除用户 {settings.AUTH} 的SESSION失败或SESSION不存在")
+                            
+                            # 清除当前SESSION配置
+                            settings.SESSION = None
+                            logger.info("已清除当前SESSION配置")
+                        except Exception as delete_error:
+                            logger.error(f"自动删除SESSION时出错: {delete_error}")
+                    
+                    # 如果是SESSION错误，直接返回而不尝试其他SESSION
+                    if is_session_error:
+                        logger.warning("Userbot启动失败，但应用将继续运行")
+                        logger.info("提示：您可以使用以下命令来添加新的SESSION：")
+                        logger.info("1. /addsession - 通过机器人命令添加SESSION")
+                        logger.info("2. /generatesession - 在线生成SESSION字符串")
+                        self.userbot = None
+                        return
                             
                             # 使用数据库中的SESSION
                             settings.SESSION = db_session
