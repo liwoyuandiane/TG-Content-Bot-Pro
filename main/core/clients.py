@@ -424,7 +424,19 @@ class ClientManager:
                     logger.error(f"Userbot启动失败: {start_error}")
                     
                     # 检查是否是SESSION相关错误
-                    session_errors = ["unpack requires a buffer", "invalid session", "session expired", "session revoked", "session invalid", "auth key not found", "404", "old session", "session string"]
+                    session_errors = [
+                        "unpack requires a buffer", 
+                        "invalid session", 
+                        "session expired", 
+                        "session revoked", 
+                        "session invalid", 
+                        "auth key not found", 
+                        "404", 
+                        "old session", 
+                        "session string",
+                        "transport error",
+                        "server sent"
+                    ]
                     is_session_error = any(err in error_msg for err in session_errors)
                     
                     # 如果是SESSION错误，自动删除失效的SESSION
