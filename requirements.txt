@@ -1,6 +1,6 @@
 #Github.com-Vasusen-code
 
-telethon
+telethon==1.24.0
 ethon
 cryptg
 tgcrypto
