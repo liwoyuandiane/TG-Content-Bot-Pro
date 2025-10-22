@@ -273,6 +273,7 @@ class ClientManager:
                         connection_retries=5
                     )
             else:
+                logger.info("不使用代理直接连接Telegram")
                 self.bot = TelegramClient('bot', settings.API_ID, settings.API_HASH, connection_retries=5)
             
             logger.info("Telethon bot客户端初始化完成")
