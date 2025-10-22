@@ -64,7 +64,7 @@ class SimpleDatabaseManager:
     
     def _create_indexes(self):
         """创建数据库索引"""
-        if not self.db:
+        if self.db is None:
             logger.error("数据库未连接")
             return
         
