@@ -422,6 +422,7 @@ class ClientManager:
                 except Exception as start_error:
                     error_msg = str(start_error).lower()
                     logger.error(f"Userbot启动失败: {start_error}")
+                    logger.debug(f"错误信息详情: {error_msg}")
                     
                     # 检查是否是SESSION相关错误
                     session_errors = [
@@ -438,6 +439,7 @@ class ClientManager:
                         "server sent"
                     ]
                     is_session_error = any(err in error_msg for err in session_errors)
+                    logger.debug(f"是否为SESSION错误: {is_session_error}")
                     
                     # 如果是SESSION错误，自动删除失效的SESSION
                     if is_session_error:
