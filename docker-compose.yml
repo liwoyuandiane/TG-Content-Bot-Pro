@@ -7,22 +7,32 @@ services:
     restart: unless-stopped
     
     # 环境变量配置
-    env_file:
-      - .env
-    
-    # 或者使用environment配置（适合CI/CD）
-    # environment:
-    #   # 必需配置
-    #   API_ID: ${API_ID}
-    #   API_HASH: ${API_HASH}
-    #   BOT_TOKEN: ${BOT_TOKEN}
-    #   AUTH: ${AUTH}
-    #   MONGO_DB: ${MONGO_DB}
-    #   
-    #   # 可选配置
-    #   SESSION: ${SESSION:-}
-    #   FORCESUB: ${FORCESUB:-}
-    #   HEALTH_CHECK_PORT: ${HEALTH_CHECK_PORT:-8089}
+    environment:
+      API_ID: ${API_ID}
+      API_HASH: ${API_HASH}
+      BOT_TOKEN: ${BOT_TOKEN}
+      AUTH: ${AUTH}
+      MONGO_DB: ${MONGO_DB}
+      SESSION: ${SESSION:-}
+      FORCESUB: ${FORCESUB:-}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DEBUG: ${DEBUG:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      MAX_WORKERS: ${MAX_WORKERS:-3}
+      MIN_CONCURRENCY: ${MIN_CONCURRENCY:-1}
+      MAX_CONCURRENCY: ${MAX_CONCURRENCY:-15}
+      CHUNK_SIZE: ${CHUNK_SIZE:-524288}
+      MAX_RETRIES: ${MAX_RETRIES:-3}
+      RETRY_DELAY: ${RETRY_DELAY:-1.0}
+      CONNECT_TIMEOUT: ${CONNECT_TIMEOUT:-30}
+      READ_TIMEOUT: ${READ_TIMEOUT:-60}
+      HEALTH_CHECK_PORT: ${HEALTH_CHECK_PORT:-28089}
+      DEFAULT_DAILY_LIMIT: ${DEFAULT_DAILY_LIMIT:-1073741824}
+      DEFAULT_MONTHLY_LIMIT: ${DEFAULT_MONTHLY_LIMIT:-10737418240}
+      DEFAULT_PER_FILE_LIMIT: ${DEFAULT_PER_FILE_LIMIT:-104857600}
+      FREEMIUM_LIMIT: ${FREEMIUM_LIMIT:-0}
+      PREMIUM_LIMIT: ${PREMIUM_LIMIT:-10}
     
     # 端口映射 - 用于健康检查
     ports:

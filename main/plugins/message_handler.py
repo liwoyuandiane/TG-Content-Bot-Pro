@@ -81,13 +81,15 @@ class MessageHandlerPlugin(BasePlugin):
             return
         
         # 提取链接
+        self.logger.info(f"正在解析链接, text='{text}', type={type(text)}")
         try:
             link = get_link(text)
+            self.logger.info(f"get_link结果: {link}")
             if not link:
                 await event.reply("❌ 未找到有效的 Telegram 消息链接")
                 return
         except Exception as e:
-            self.logger.error(f"解析链接失败: {e}")
+            self.logger.error(f"解析链接失败: text='{text}', error={e}")
             await event.reply("❌ 链接解析失败，请检查链接格式")
             return
         

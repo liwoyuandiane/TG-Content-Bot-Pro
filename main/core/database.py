@@ -1109,6 +1109,7 @@ class DatabaseManager:
         """
         async with self._lock:
             if self.db is None:
+                logger.error("数据库未连接，无法保存SESSION")
                 return False
             
             try:
@@ -1123,9 +1124,12 @@ class DatabaseManager:
                     },
                     upsert=True
                 )
+                logger.info(f"SESSION保存结果: user_id={user_id}, modified={result.modified_count}, upserted={result.upserted_id}")
                 return True
             except Exception as e:
                 logger.error(f"保存会话失败: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
                 return False
     
     async def get_session(self, user_id: int) -> Optional[str]:

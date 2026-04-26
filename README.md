@@ -111,6 +111,90 @@ mongodb+srv://<username>:<password>@cluster.mongodb.net/tgbot?retryWrites=true&w
 
 ---
 
+## ❓ 常见问题
+
+### 1. 链接解析失败 / 消息无法获取
+**问题**：`链接解析失败，请检查链接格式`
+
+**原因**：
+- 发送的链接格式不正确
+- Bot 无法访问该群组/频道
+
+**解决方案**：
+- 确保链接格式正确：`https://t.me/username/message_id` 或 `https://t.me/c/chatid/message_id`
+- 如果是群组消息，需要添加 Bot 到群组，或配置 SESSION
+
+### 2. 未配置 SESSION
+**问题**：`未配置 SESSION，无法访问受限内容`
+
+**原因**：访问私有频道/群组需要用户账号权限，Bot 无法直接访问
+
+**解决方案**：
+- 使用 `/generatesession` 命令生成 SESSION
+- 或在 `.env` 中配置 `SESSION` 环境变量
+
+### 3. FloodWaitError（限流）
+**问题**：`A wait of X seconds is required`
+
+**原因**：Telegram API 限流，通常由频繁重启或多次连接失败引起
+
+**解决方案**：
+- 等待指定时间（通常 30 分钟到 24 小时）
+- 等待期间**不要重启容器**，否则会延长等待时间
+- 等待结束后自动恢复
+
+### 4. MongoDB 连接失败
+**问题**：`数据库连接失败` 或 `保存失败`
+
+**原因**：
+- MongoDB 连接串配置错误
+- MongoDB Atlas IP 白名单未添加服务器 IP
+- 网络连接问题
+
+**解决方案**：
+- 检查 `MONGO_DB` 环境变量是否正确
+- 在 MongoDB Atlas 中添加服务器 IP 到白名单（IP Access List）
+- 确保 MongoDB Atlas 集群状态正常
+
+### 5. SESSION 保存失败
+**问题**：`SESSION 保存失败，请稍后重试`
+
+**原因**：
+- MongoDB 数据库连接问题
+- 用户数据写入权限问题
+
+**解决方案**：
+- 检查 MongoDB 连接是否正常
+- 检查 Atlas 白名单设置
+- 等待一段时间后重试
+
+### 6. Bot 无法访问群组消息
+**问题**：公开群组消息转发失败
+
+**原因**：
+- Telegram Bot API 限制：Bot 无法主动获取群组消息
+- Bot 不是群组成员
+
+**解决方案**：
+- 将 Bot 添加为群组管理员或成员
+- 或配置 SESSION（用户账号）来访问群组
+
+### 7. 单实例运行错误
+**问题**：`检测到另一个实例正在运行`
+
+**原因**：已有 Bot 实例在运行
+
+**解决方案**：
+```bash
+# 停止所有相关容器
+docker stop tg-content-bot-pro
+docker rm tg-content-bot-pro
+# 重新启动
+docker-compose up -d
+```
+
+---
+
 ## 📄 许可证
 
 MIT License

@@ -38,11 +38,6 @@ class MessageService:
         Returns:
             bool: 处理是否成功
         """
-        # 检查 userbot 是否可用
-        if userbot is None:
-            await client.edit_message_text(sender, edit_id, "❌ 未配置 SESSION，无法访问受限内容\n\n使用 /addsession 添加 SESSION")
-            return False
-        
         edit = ""
         chat = ""
         
@@ -53,6 +48,11 @@ class MessageService:
         msg_id = int(msg_link.split("/")[-1]) + offset
         
         if 't.me/c/' in msg_link or 't.me/b/' in msg_link:
+            # 私有频道需要 userbot
+            if userbot is None:
+                await client.edit_message_text(sender, edit_id, "❌ 未配置 SESSION，无法访问受限内容\n\n使用 /addsession 添加 SESSION")
+                return False
+            
             if 't.me/b/' in msg_link:
                 chat = str(msg_link.split("/")[-2])
             else:
