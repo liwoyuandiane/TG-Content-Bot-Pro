@@ -3,7 +3,7 @@ from typing import List
 
 from ..core.base_plugin import BasePlugin
 from ..core.clients import client_manager
-from ..config import settings
+from ..core.database import db_manager
 from ..services.traffic_service import traffic_service
 from ..services.user_service import user_service
 from ..services.permission_service import permission_service
@@ -256,25 +256,22 @@ class TrafficPlugin(BasePlugin):
             reset_type = parts[1].lower()
             
             if reset_type == 'daily':
-                # 调用数据库服务来重置每日流量
-                from ..core.database import reset_daily_traffic
-                success = await reset_daily_traffic()
+                from ..core.database import db_manager
+                success = await db_manager.reset_daily_traffic()
                 if success:
                     await event.reply("✅ 已重置所有用户今日流量")
                 else:
                     await event.reply("❌ 重置今日流量失败")
             elif reset_type == 'monthly':
-                # 调用数据库服务来重置每月流量
-                from ..core.database import reset_monthly_traffic
-                success = await reset_monthly_traffic()
+                from ..core.database import db_manager
+                success = await db_manager.reset_monthly_traffic()
                 if success:
                     await event.reply("✅ 已重置所有用户本月流量")
                 else:
                     await event.reply("❌ 重置本月流量失败")
             elif reset_type == 'all':
-                # 调用数据库服务来重置所有流量
-                from ..core.database import reset_all_traffic
-                success = await reset_all_traffic()
+                from ..core.database import db_manager
+                success = await db_manager.reset_all_traffic()
                 if success:
                     await event.reply("✅ 已重置所有流量统计")
                 else:
@@ -313,8 +310,7 @@ class TrafficPlugin(BasePlugin):
             # 获取流量统计
             total_traffic = await traffic_service.get_total_traffic()
             
-            # 获取队列统计
-            from ..core.task_queue import task_queue
+            from ..plugins.queue_commands import task_queue
             queue_stats = await task_queue.get_queue_stats()
             
             msg = "🤖 **机器人统计信息**\n\n"
@@ -573,8 +569,8 @@ class TrafficPlugin(BasePlugin):
                 return
             
             # 调用数据库服务来清除转发历史
-            from ..core.database import clear_forward_history
-            success = await clear_forward_history()
+            from ..core.database import db_manager
+            success = await db_manager.clear_forward_history()
             if success:
                 await event.reply("✅ 已清除所有转发历史记录")
             else:

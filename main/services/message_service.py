@@ -1,12 +1,6 @@
-"""消息服务模块
-
-该模块提供消息获取和处理功能，用于从Telegram频道获取消息内容。
-"""
-import asyncio
+"""消息服务模块"""
 import logging
-import os
-import time
-from typing import Optional, Any
+from typing import Optional
 
 from pyrogram import Client
 from pyrogram.errors import ChannelBanned, ChannelInvalid, ChannelPrivate, ChatIdInvalid, ChatInvalid, PeerIdInvalid
@@ -139,80 +133,6 @@ class MessageService:
                 return await client.edit_message_text(sender, edit_id, f'❌ 保存失败\n\n链接: `{msg_link}`\n\n错误: {str(e)}')
             
         return True
-    
-    def _get_file_size(self, msg: Any) -> int:
-        """获取文件大小"""
-        file_size = 0
-        if msg.document:
-            file_size = msg.document.file_size
-        elif msg.video:
-            file_size = msg.video.file_size
-        elif msg.audio:
-            file_size = msg.audio.file_size
-        elif msg.photo:
-            file_size = msg.photo.file_size
-        elif msg.voice:
-            file_size = msg.voice.file_size
-        elif msg.video_note:
-            file_size = msg.video_note.file_size
-        return file_size
-    
-    def _get_thumbnail(self, sender: int) -> Optional[str]:
-        """获取用户缩略图"""
-        if os.path.exists(f'{sender}.jpg'):
-            return f'{sender}.jpg'
-        else:
-            return None
-    
-    def _get_media_type(self, msg: Any) -> str:
-        """获取媒体类型"""
-        if msg.video_note:
-            return "video_note"
-        elif msg.video:
-            return "video"
-        elif msg.photo:
-            return "photo"
-        elif msg.document:
-            return "document"
-        elif msg.audio:
-            return "audio"
-        elif msg.voice:
-            return "voice"
-        else:
-            return "unknown"
-    
-    def _translate_error(self, error_msg: str) -> str:
-        """翻译常见英文错误"""
-        translations = {
-            "doesn't contain any downloadable media": "此消息不包含可下载的媒体文件",
-            "file size": "文件大小错误",
-            "timeout": "下载超时，请重试"
-        }
-        
-        for key, value in translations.items():
-            if key in error_msg.lower():
-                return value
-        return error_msg
-    
-    def _is_telethon_fallback_needed(self, error: Exception) -> bool:
-        """检查是否需要使用Telethon回退上传"""
-        error_str = str(error)
-        return ("messages.SendMedia" in error_str or 
-                "SaveBigFilePartRequest" in error_str or 
-                "SendMediaRequest" in error_str or 
-                "File size equals to 0 B" in error_str)
-    
-    async def _cleanup_file(self, file_path: str) -> bool:
-        """清理临时文件"""
-        try:
-            if os.path.exists(file_path):
-                os.remove(file_path)
-                logger.info(f"临时文件已清理: {file_path}")
-            return True
-        except Exception as e:
-            logger.warning(f"清理临时文件失败 {file_path}: {e}")
-            return False
 
 
-# 全局消息服务实例
 message_service = MessageService()

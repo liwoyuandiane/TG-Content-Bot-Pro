@@ -2,7 +2,7 @@
 import asyncio
 import logging
 import time
-from typing import Optional
+from typing import Dict
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -71,25 +71,7 @@ class RateLimiter:
         """更新速率"""
         if new_rate <= 0:
             raise ValueError("速率必须大于0")
-        
-        async def _update_rate():
-            async with self.lock:
-                # 更新当前令牌数
-                now = time.monotonic()
-                elapsed = now - self.last_update
-                self.tokens = min(self.burst, self.tokens + elapsed * self.rate_per_second)
-                self.last_update = now
-                
-                # 更新速率
-                self.rate_per_second = new_rate
-        
-        # 在事件循环中执行
-        try:
-            loop = asyncio.get_running_loop()
-            asyncio.ensure_future(_update_rate(), loop=loop)
-        except RuntimeError:
-            # 没有运行中的事件循环
-            pass
+        self.rate_per_second = new_rate
     
     def close(self) -> None:
         """关闭速率限制器"""

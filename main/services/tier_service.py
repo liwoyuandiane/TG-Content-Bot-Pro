@@ -1,7 +1,4 @@
-"""用户等级服务模块
-
-该模块提供用户等级管理功能，包括检查用户等级、获取批量限制等。
-"""
+"""用户等级服务模块"""
 import logging
 from ..core.database import db_manager
 from ..config import settings

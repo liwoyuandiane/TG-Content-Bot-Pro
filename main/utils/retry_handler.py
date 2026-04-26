@@ -253,7 +253,8 @@ def retry_with_backoff(
             logger.warning(f"函数 {func.__name__} 第 {attempt + 1} 次重试，等待 {delay:.2f} 秒")
             
             if asyncio.iscoroutinefunction(func):
-                asyncio.sleep(delay)
+                import time
+                time.sleep(delay)
             else:
                 import time
                 time.sleep(delay)

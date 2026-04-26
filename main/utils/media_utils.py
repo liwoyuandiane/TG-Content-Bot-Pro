@@ -6,9 +6,8 @@ import time
 import math
 from datetime import datetime as dt
 from typing import Optional
-from pyrogram.errors import FloodWait, InviteHashInvalid, InviteHashExpired, UserAlreadyParticipant
+from pyrogram.errors import FloodWait
 
-from ..exceptions.telegram import SessionException
 from .file_manager import file_manager
 from ..utils.logging_config import get_logger
 
@@ -133,22 +132,3 @@ def get_link(string: str) -> Optional[str]:
             return None
     except Exception:
         return None
-
-
-async def join_chat(client, invite_link: str) -> str:
-    """加入私有聊天"""
-    if client is None:
-        raise SessionException("未配置 SESSION，无法加入频道")
-    
-    try:
-        await client.join_chat(invite_link)
-        return "✅ 成功加入频道"
-    except UserAlreadyParticipant:
-        return "✅ 您已经是该频道的成员"
-    except (InviteHashInvalid, InviteHashExpired):
-        return "❌ 无法加入，邀请链接已过期或无效"
-    except FloodWait as e:
-        return f"❌ 请求过多，请等待 {e.value} 秒后重试"
-    except Exception as e:
-        logger.warning(f"加入频道时出错: {e}")
-        return "❌ 无法加入，请尝试手动加入"

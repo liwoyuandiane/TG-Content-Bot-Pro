@@ -1,5 +1,4 @@
 """启动插件"""
-import os
 import logging
 from telethon import events, Button
 

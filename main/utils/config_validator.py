@@ -277,69 +277,14 @@ class ConfigValidator:
 
 
 def ensure_config_integrity() -> bool:
-    """确保配置完整性
-    
-    Returns:
-        True表示配置完整且正确，False表示存在问题
-    """
+    """确保配置完整性"""
     try:
         validator = ConfigValidator()
         is_valid = validator.validate_all()
-        
         if not is_valid:
             report = validator.get_validation_report()
             logger.error("配置完整性检查失败，发现 %d 个错误", report["error_count"])
-            
-            # 如果是在开发环境，提供更详细的帮助信息
-            if not settings.is_production():
-                logger.info("配置模板参考:")
-                template = validator.generate_config_template()
-                for key, value in template.items():
-                    logger.info("  %s=%s", key, value)
-        
         return is_valid
-        
     except Exception as e:
         logger.error("配置完整性检查时发生错误: %s", e)
         return False
-
-
-def validate_specific_config(config_key: str, config_value: Any) -> bool:
-    """验证特定配置项
-    
-    Args:
-        config_key: 配置项键名
-        config_value: 配置项值
-        
-    Returns:
-        True表示配置项有效，False表示无效
-    """
-    validators = {
-        "API_ID": lambda v: isinstance(v, int) and v > 0,
-        "API_HASH": lambda v: isinstance(v, str) and len(v) == 32 and v.isalnum(),
-        "BOT_TOKEN": lambda v: isinstance(v, str) and bool(re.match(r'^\d+:[A-Za-z0-9_-]+$', v)),
-        "AUTH": lambda v: bool(v) and isinstance(v, (int, str)),
-        "MONGO_DB": lambda v: isinstance(v, str) and v.startswith(('mongodb://', 'mongodb+srv://')),
-        "ENVIRONMENT": lambda v: v in ['development', 'testing', 'production'],
-        "LOG_LEVEL": lambda v: v.upper() in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
-        "HEALTH_CHECK_PORT": lambda v: isinstance(v, int) and 1024 <= v <= 65535,
-        "MAX_WORKERS": lambda v: isinstance(v, int) and 1 <= v <= 20,
-        "MAX_RETRIES": lambda v: isinstance(v, int) and 1 <= v <= 10,
-        "DEFAULT_DAILY_LIMIT": lambda v: isinstance(v, int) and v >= 0,
-        "DEFAULT_MONTHLY_LIMIT": lambda v: isinstance(v, int) and v >= 0,
-        "DEFAULT_PER_FILE_LIMIT": lambda v: isinstance(v, int) and v >= 0
-    }
-    
-    if config_key not in validators:
-        logger.warning("未知的配置项: %s", config_key)
-        return True  # 未知配置项默认认为有效
-    
-    try:
-        return validators[config_key](config_value)
-    except Exception as e:
-        logger.error("验证配置项 %s 时发生错误: %s", config_key, e)
-        return False
-
-
-# 创建全局验证器实例
-config_validator = ConfigValidator()

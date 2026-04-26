@@ -7,7 +7,7 @@ import os
 import glob
 import sys
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
 from typing import Dict, Any, Optional
 
@@ -309,8 +309,3 @@ class PerformanceLogger:
 
 # 创建全局性能日志记录器
 performance_logger = PerformanceLogger(get_logger(__name__))
-
-
-def get_logger(name: str) -> logging.Logger:
-    """获取命名日志记录器"""
-    return logging.getLogger(name)

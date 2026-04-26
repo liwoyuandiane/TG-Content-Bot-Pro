@@ -9,8 +9,6 @@ from telethon import TelegramClient
 
 from ..config import settings
 from ..services.session_service import session_service
-from ..services.permission_service import permission_service
-from ..services.user_service import user_service
 from ..utils.security import security_manager
 from ..utils.session_utils import sanitize_pyrogram_session, validate_pyrogram_session
 

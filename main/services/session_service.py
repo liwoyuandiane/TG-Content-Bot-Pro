@@ -166,9 +166,6 @@ class SessionService:
                     decrypted_session = self._decrypt_session(session["session_string"])
                     if decrypted_session is not None:
                         session["session_string"] = decrypted_session
-                    else:
-                        # 解密失败，使用原始值
-                        session["session_string"] = session["session_string"]
             
             return sessions
         except Exception as e:

@@ -2,7 +2,6 @@
 import sys
 import logging
 import asyncio
-import glob
 import os
 import threading
 import atexit

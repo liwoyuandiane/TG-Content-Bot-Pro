@@ -5,7 +5,6 @@
 import os
 import logging
 import re
-import sys
 from typing import Optional, Any, Dict, List, Union
 from decouple import config, undefined
 
@@ -87,7 +86,7 @@ class Settings:
         self.READ_TIMEOUT: int = self._get_config("READ_TIMEOUT", default=60, cast=int)
         
         # 转发服务配置
-        self.DISABLE_DOWNLOAD_UPLOAD: bool = self._get_config("DISABLE_DOWNLOAD_UPLOAD", default=True, cast=bool)
+        self.DISABLE_DOWNLOAD_UPLOAD: bool = self._get_config("DISABLE_DOWNLOAD_UPLOAD", default=True, cast=bool)  # 已废弃，不影响功能
         
         # 批量处理限制配置
         self.FREEMIUM_LIMIT: int = self._get_config("FREEMIUM_LIMIT", default=0, cast=int)  # 免费用户不能批量
@@ -144,7 +143,6 @@ class Settings:
         if not self.BOT_TOKEN:
             errors.append("BOT_TOKEN 不能为空")
         elif not re.match(r'^\d+:[A-Za-z0-9_-]+$', self.BOT_TOKEN):
-            # 添加调试信息，帮助识别问题
             errors.append(f"BOT_TOKEN 格式无效，应为 '数字:字符串' 格式。当前值: '{self.BOT_TOKEN[:20]}...' 长度: {len(self.BOT_TOKEN)}")
             
         if not self.AUTH:
@@ -274,20 +272,7 @@ class Settings:
             return [self.AUTH]
     
     def is_user_authorized(self, user_id: int) -> bool:
-        """检查用户是否被授权
-        
-        Args:
-            user_id: 用户ID
-            
-        Returns:
-            True表示用户被授权，False表示未授权
-        """
-        # 首先检查环境变量中的授权用户
-        if user_id in self.get_auth_users():
-            return True
-        
-        # 然后检查数据库中的授权用户
-        # 配置层不依赖服务层，授权逻辑统一由上层业务处理。
+        """检查用户是否被授权"""
         return user_id in self.get_auth_users()
     
     def get_traffic_limits(self) -> Dict[str, int]:

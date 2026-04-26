@@ -279,62 +279,7 @@ def safe_execute(default_return: Any = None,
     return decorator
 
 
-class CircuitBreaker:
-    """断路器模式实现"""
-    
-    def __init__(self, failure_threshold: int = 5, 
-                 recovery_timeout: int = 60):
-        """初始化断路器
-        
-        Args:
-            failure_threshold: 失败阈值
-            recovery_timeout: 恢复超时时间（秒）
-        """
-        self.failure_threshold = failure_threshold
-        self.recovery_timeout = recovery_timeout
-        self.failure_count = 0
-        self.last_failure_time = None
-        self.state = "closed"  # closed, open, half-open
-    
-    def can_execute(self) -> bool:
-        """检查是否允许执行
-        
-        Returns:
-            True表示允许执行，False表示断路器打开
-        """
-        if self.state == "closed":
-            return True
-        
-        elif self.state == "open":
-            # 检查是否超过恢复时间
-            if (self.last_failure_time and 
-                (datetime.now() - self.last_failure_time).total_seconds() > self.recovery_timeout):
-                self.state = "half-open"
-                return True
-            return False
-        
-        else:  # half-open
-            return True
-    
-    def record_success(self) -> None:
-        """记录成功执行"""
-        if self.state == "half-open":
-            self.state = "closed"
-            self.failure_count = 0
-            self.last_failure_time = None
-    
-    def record_failure(self) -> None:
-        """记录失败执行"""
-        self.failure_count += 1
-        self.last_failure_time = datetime.now()
-        
-        if self.failure_count >= self.failure_threshold:
-            self.state = "open"
-            logger.warning("断路器打开，服务暂时不可用")
-    
-    def get_state(self) -> str:
-        """获取当前状态"""
-        return self.state
+from ..utils.retry_handler import CircuitBreaker
 
 
 def handle_errors(error: Exception, context: str = "", user_id: Optional[int] = None) -> bool:
@@ -351,9 +296,4 @@ def handle_errors(error: Exception, context: str = "", user_id: Optional[int] = 
     return error_handler.handle_error(error, context, user_id)
 
 
-# 创建全局错误处理器实例
 error_handler = ErrorHandler()
-
-# 创建常用断路器实例
-download_circuit_breaker = CircuitBreaker(failure_threshold=3, recovery_timeout=30)
-api_circuit_breaker = CircuitBreaker(failure_threshold=5, recovery_timeout=60)
