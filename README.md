@@ -17,25 +17,7 @@
 
 ## 🚀 快速开始
 
-### Docker 部署（推荐）
-
-```bash
-# 1. 克隆项目
-git clone https://github.com/liwoyuandiane/TG-Content-Bot-Pro.git
-cd TG-Content-Bot-Pro
-
-# 2. 配置环境变量
-cp .env.example .env
-nano .env
-
-# 3. 启动服务
-docker-compose up -d
-
-# 4. 查看日志
-docker-compose logs -f
-```
-
-### 使用预构建镜像
+### 使用预构建镜像（推荐）
 
 ```bash
 # 拉取镜像
@@ -52,6 +34,24 @@ docker run -d \
   -e ENCRYPTION_KEY=your_key \
   -p 28089:28089 \
   ghcr.io/liwoyuandiane/tg-content-bot-pro:latest
+```
+
+### 下载代码 Docker 部署
+
+```bash
+# 1. 克隆项目
+git clone https://github.com/liwoyuandiane/TG-Content-Bot-Pro.git
+cd TG-Content-Bot-Pro
+
+# 2. 配置环境变量
+cp .env.example .env
+nano .env
+
+# 3. 启动服务
+docker-compose up -d
+
+# 4. 查看日志
+docker-compose logs -f
 ```
 
 ---
