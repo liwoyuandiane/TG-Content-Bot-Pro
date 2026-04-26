@@ -29,5 +29,6 @@ jobs:
 
       - name: Build and push
         run: |
-          docker build -t ghcr.io/${{ github.repository_owner }}/tg-content-bot-pro:latest .
-          docker push ghcr.io/${{ github.repository_owner }}/tg-content-bot-pro:latest
+          IMAGE_TAG=ghcr.io/liwoyuandiane/tg-content-bot-pro:${{ github.sha }}
+          docker build -t $IMAGE_TAG .
+          docker push $IMAGE_TAG
