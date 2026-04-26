@@ -28,7 +28,11 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push
-        run: |
-          IMAGE_TAG=ghcr.io/liwoyuandiane/tg-content-bot-pro:${{ github.sha }}
-          docker build -t $IMAGE_TAG .
-          docker push $IMAGE_TAG
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/liwoyuandiane/tg-content-bot-pro:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/liwoyuandiane/TG-Content-Bot-Pro
+            org.opencontainers.image.description=Telegram Content Bot Pro
