@@ -31,23 +31,23 @@ class SessionPlugin(BasePlugin):
     
     async def on_load(self):
         """插件加载时注册事件处理器"""
-        # 注册命令处理器 - 使用更简单的模式匹配，在handler内进行权限检查
+        # 注册命令处理器 - 使用更精确的匹配
         client_manager.bot.add_event_handler(self._add_session, events.NewMessage(
-            incoming=True, pattern="/addsession"))
+            incoming=True, pattern=r'^/addsession\b'))
         client_manager.bot.add_event_handler(self._delete_session, events.NewMessage(
-            incoming=True, pattern="/delsession"))
+            incoming=True, pattern=r'^/delsession\b'))
         client_manager.bot.add_event_handler(self._list_sessions, events.NewMessage(
-            incoming=True, pattern="/sessions"))
+            incoming=True, pattern=r'^/sessions\b'))
         client_manager.bot.add_event_handler(self._view_session_callback, events.CallbackQuery(
             pattern=rb"view_session:\d+"))
         client_manager.bot.add_event_handler(self._my_session, events.NewMessage(
-            incoming=True, pattern="/mysession"))
+            incoming=True, pattern=r'^/mysession\b'))
         client_manager.bot.add_event_handler(self._generate_session, events.NewMessage(
-            incoming=True, pattern="/generatesession"))
+            incoming=True, pattern=r'^/generatesession\b'))
         client_manager.bot.add_event_handler(self._cancel_session, events.NewMessage(
-            incoming=True, pattern="/cancelsession"))
+            incoming=True, pattern=r'^/cancelsession\b'))
         client_manager.bot.add_event_handler(self._retry_session, events.NewMessage(
-            incoming=True, pattern="/retry_session"))
+            incoming=True, pattern=r'^/retry_session\b'))
         client_manager.bot.add_event_handler(self._handle_text_input, events.NewMessage(
             incoming=True, func=lambda e: e.text and not e.text.startswith('/')))
         
@@ -55,23 +55,23 @@ class SessionPlugin(BasePlugin):
     
     async def on_unload(self):
         """插件卸载时移除事件处理器"""
-        # 移除事件处理器 - 不再使用from_users限制，在handler内进行权限检查
+        # 移除事件处理器 - 使用更精确的匹配
         client_manager.bot.remove_event_handler(self._add_session, events.NewMessage(
-            incoming=True, pattern="/addsession"))
+            incoming=True, pattern=r'^/addsession\b'))
         client_manager.bot.remove_event_handler(self._delete_session, events.NewMessage(
-            incoming=True, pattern="/delsession"))
+            incoming=True, pattern=r'^/delsession\b'))
         client_manager.bot.remove_event_handler(self._list_sessions, events.NewMessage(
-            incoming=True, pattern="/sessions"))
+            incoming=True, pattern=r'^/sessions\b'))
         client_manager.bot.remove_event_handler(self._view_session_callback, events.CallbackQuery(
             pattern=rb"view_session:\d+"))
         client_manager.bot.remove_event_handler(self._my_session, events.NewMessage(
-            incoming=True, pattern="/mysession"))
+            incoming=True, pattern=r'^/mysession\b'))
         client_manager.bot.remove_event_handler(self._generate_session, events.NewMessage(
-            incoming=True, pattern="/generatesession"))
+            incoming=True, pattern=r'^/generatesession\b'))
         client_manager.bot.remove_event_handler(self._cancel_session, events.NewMessage(
-            incoming=True, pattern="/cancelsession"))
+            incoming=True, pattern=r'^/cancelsession\b'))
         client_manager.bot.remove_event_handler(self._retry_session, events.NewMessage(
-            incoming=True, pattern="/retry_session"))
+            incoming=True, pattern=r'^/retry_session\b'))
         client_manager.bot.remove_event_handler(self._handle_text_input, events.NewMessage(
             incoming=True, func=lambda e: e.text and not e.text.startswith('/')))
         

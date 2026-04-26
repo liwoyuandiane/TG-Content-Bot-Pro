@@ -28,20 +28,20 @@ class StartPlugin(BasePlugin):
             return
         
         # 注册回调查询处理器
-        self.drone.add_event_handler(self.set_thumbnail, events.CallbackQuery(data="set"))
-        self.drone.add_event_handler(self.remove_thumbnail, events.CallbackQuery(data="rem"))
+        self.drone.add_event_handler(self.set_thumbnail, events.CallbackQuery(data=b"set"))
+        self.drone.add_event_handler(self.remove_thumbnail, events.CallbackQuery(data=b"rem"))
         
-        # 注册消息处理器
-        self.drone.add_event_handler(self.start_command, events.NewMessage(incoming=True, pattern="/start"))
+        # 注册消息处理器 - 使用更精确的匹配
+        self.drone.add_event_handler(self.start_command, events.NewMessage(incoming=True, pattern=r'^/start\b'))
         
         logger.info(f"启动插件事件处理器已注册，当前事件处理器数量: {len(list(self.drone.list_event_handlers()))}")
     
     async def on_unload(self):
         """插件卸载时移除事件处理器"""
         # 移除事件处理器
-        self.drone.remove_event_handler(self.set_thumbnail, events.CallbackQuery(data="set"))
-        self.drone.remove_event_handler(self.remove_thumbnail, events.CallbackQuery(data="rem"))
-        self.drone.remove_event_handler(self.start_command, events.NewMessage(incoming=True, pattern="/start"))
+        self.drone.remove_event_handler(self.set_thumbnail, events.CallbackQuery(data=b"set"))
+        self.drone.remove_event_handler(self.remove_thumbnail, events.CallbackQuery(data=b"rem"))
+        self.drone.remove_event_handler(self.start_command, events.NewMessage(incoming=True, pattern=r'^/start\b'))
         
         logger.info("启动插件事件处理器已移除")
     

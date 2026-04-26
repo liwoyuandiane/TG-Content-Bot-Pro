@@ -108,13 +108,7 @@ tmp/
 .app.lock
 
 # Project specific
-.db_initialized
-.pyc
-.pyo
-.pyd
-
-# Do not ignore AGENTS.md for the project
-# AGENTS.md
+AGENTS.md
 
 # Test scripts (not part of the project)
 test_bot_commands.py
@@ -133,3 +127,4 @@ test_bot_commands.py
 *.wmv
 *.flv
 *.mkv
+AGENTS.md

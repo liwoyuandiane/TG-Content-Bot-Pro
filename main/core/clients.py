@@ -1,10 +1,9 @@
 """Telegram客户端管理模块"""
 
-import asyncio
 import logging
 from typing import Dict, Any, Optional
 
-from pyrogram import Client
+from pyrogram import Client as PyrogramClient
 from telethon import TelegramClient
 
 from ..config import settings
@@ -19,9 +18,9 @@ class ClientManager:
     """Telegram客户端管理器"""
     
     def __init__(self):
-        self.bot: Optional[Client] = None
-        self.userbot: Optional[Client] = None
-        self.pyrogram_bot: Optional[Client] = None
+        self.bot: Optional[TelegramClient] = None  # Telethon bot客户端
+        self.userbot: Optional[PyrogramClient] = None  # Pyrogram userbot客户端
+        self.pyrogram_bot: Optional[PyrogramClient] = None  # Pyrogram bot客户端
         self.session_svc = session_service
         self.logger = logging.getLogger(__name__)
     
@@ -74,7 +73,7 @@ class ClientManager:
             masked_token = security_manager.mask_sensitive_data(settings.BOT_TOKEN, 10)
             logger.info(f"正在创建Pyrogram bot客户端 (Token: {masked_token})")
             
-            self.pyrogram_bot = Client(
+            self.pyrogram_bot = PyrogramClient(
                 "SaveRestricted",
                 bot_token=settings.BOT_TOKEN,
                 api_id=settings.API_ID,
@@ -145,7 +144,7 @@ class ClientManager:
         logger.info(f"正在启动Userbot客户端 (Session: {masked_session})")
         
         # 创建Userbot客户端
-        userbot = Client(
+        userbot = PyrogramClient(
             "Userbot",
             session_string=corrected_session,
             api_hash=settings.API_HASH,

@@ -32,16 +32,16 @@ class QueuePlugin(BasePlugin):
 
     async def on_load(self):
         client_manager.bot.add_event_handler(self._queue_status, events.NewMessage(
-            incoming=True, pattern='/queue'))
+            incoming=True, pattern=r'^/queue\b'))
         client_manager.bot.add_event_handler(self._reset_rate, events.NewMessage(
-            incoming=True, pattern='/resetrate'))
+            incoming=True, pattern=r'^/resetrate\b'))
         self.logger.info("队列管理插件事件处理器已注册")
-
+    
     async def on_unload(self):
         client_manager.bot.remove_event_handler(self._queue_status, events.NewMessage(
-            incoming=True, pattern='/queue'))
+            incoming=True, pattern=r'^/queue\b'))
         client_manager.bot.remove_event_handler(self._reset_rate, events.NewMessage(
-            incoming=True, pattern='/resetrate'))
+            incoming=True, pattern=r'^/resetrate\b'))
         self.logger.info("队列管理插件事件处理器已移除")
 
     async def _queue_status(self, event):

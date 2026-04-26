@@ -8,7 +8,8 @@ ENV PYTHONUNBUFFERED=1 \
     DEBIAN_FRONTEND=noninteractive \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    PYTHONPATH=/app
+    PYTHONPATH=/app \
+    HEALTH_CHECK_PORT=28089
 
 # 创建非root用户（安全最佳实践）
 RUN groupadd -r appuser && useradd -r -g appuser appuser
@@ -49,14 +50,14 @@ RUN chown -R appuser:appuser /app
 USER appuser
 
 # 暴露健康检查端口
-EXPOSE 28089
+EXPOSE ${HEALTH_CHECK_PORT:-28089}
 
 # 定义卷用于日志持久化（可选）
 RUN mkdir -p /app/logs && chmod 777 /app/logs
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
-    CMD curl -f http://localhost:28089/health || exit 1
+    CMD curl -f http://localhost:${HEALTH_CHECK_PORT:-28089}/health || exit 1
 
 # 启动命令
 CMD ["sh", "start.sh"]

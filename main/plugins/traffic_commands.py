@@ -18,23 +18,23 @@ class TrafficPlugin(BasePlugin):
     
     async def on_load(self):
         """插件加载时注册事件处理器"""
-        # 注册命令处理器 - 使用更简单的模式匹配，在handler内进行权限检查
+        # 注册命令处理器 - 使用更精确的匹配
         client_manager.bot.add_event_handler(self._traffic_stats, events.NewMessage(
-            incoming=True, pattern='/traffic'))
+            incoming=True, pattern=r'^/traffic\b'))
         client_manager.bot.add_event_handler(self._total_traffic_stats, events.NewMessage(
-            incoming=True, pattern='/totaltraffic'))
+            incoming=True, pattern=r'^/total_traffic\b'))
         client_manager.bot.add_event_handler(self._bot_stats, events.NewMessage(
-            incoming=True, pattern='/stats'))
+            incoming=True, pattern=r'^/stats\b'))
         client_manager.bot.add_event_handler(self._forward_history, events.NewMessage(
-            incoming=True, pattern='/history'))
+            incoming=True, pattern=r'^/history\b'))
         client_manager.bot.add_event_handler(self._set_traffic_limit, events.NewMessage(
-            incoming=True, pattern='/setlimit'))
+            incoming=True, pattern=r'^/setlimit\b'))
         client_manager.bot.add_event_handler(self._reset_traffic, events.NewMessage(
-            incoming=True, pattern='/resettraffic'))
+            incoming=True, pattern=r'^/reset_traffic\b'))
         client_manager.bot.add_event_handler(self._clear_history, events.NewMessage(
-            incoming=True, pattern='/clearhistory'))
+            incoming=True, pattern=r'^/clearhistory\b'))
         client_manager.bot.add_event_handler(self._confirm_clear_history, events.NewMessage(
-            incoming=True, pattern='/clearhistory confirm'))
+            incoming=True, pattern=r'^/clearhistory confirm\b'))
         
         # 注册回调处理器
         client_manager.bot.add_event_handler(self._handle_history_navigation, events.CallbackQuery())
@@ -43,23 +43,23 @@ class TrafficPlugin(BasePlugin):
     
     async def on_unload(self):
         """插件卸载时移除事件处理器"""
-        # 移除事件处理器 - 不再使用from_users限制，在handler内进行权限检查
+        # 移除事件处理器 - 使用更精确的匹配
         client_manager.bot.remove_event_handler(self._traffic_stats, events.NewMessage(
-            incoming=True, pattern='/traffic'))
+            incoming=True, pattern=r'^/traffic\b'))
         client_manager.bot.remove_event_handler(self._total_traffic_stats, events.NewMessage(
-            incoming=True, pattern='/totaltraffic'))
+            incoming=True, pattern=r'^/total_traffic\b'))
         client_manager.bot.remove_event_handler(self._bot_stats, events.NewMessage(
-            incoming=True, pattern='/stats'))
+            incoming=True, pattern=r'^/stats\b'))
         client_manager.bot.remove_event_handler(self._forward_history, events.NewMessage(
-            incoming=True, pattern='/history'))
+            incoming=True, pattern=r'^/history\b'))
         client_manager.bot.remove_event_handler(self._set_traffic_limit, events.NewMessage(
-            incoming=True, pattern='/setlimit'))
+            incoming=True, pattern=r'^/setlimit\b'))
         client_manager.bot.remove_event_handler(self._reset_traffic, events.NewMessage(
-            incoming=True, pattern='/resettraffic'))
+            incoming=True, pattern=r'^/reset_traffic\b'))
         client_manager.bot.remove_event_handler(self._clear_history, events.NewMessage(
-            incoming=True, pattern='/clearhistory'))
+            incoming=True, pattern=r'^/clearhistory\b'))
         client_manager.bot.remove_event_handler(self._confirm_clear_history, events.NewMessage(
-            incoming=True, pattern='/clearhistory confirm'))
+            incoming=True, pattern=r'^/clearhistory confirm\b'))
         
         # 移除回调处理器
         client_manager.bot.remove_event_handler(self._handle_history_navigation, events.CallbackQuery())
@@ -420,7 +420,7 @@ class TrafficPlugin(BasePlugin):
                     msg += f"   状态: {status_cn}\n"
                     msg += f"   类型: {media_type_cn}\n\n"
                 except Exception as e:
-                    logger.error(f"处理历史记录时出错: {e}")
+                    self.logger.error(f"处理历史记录时出错: {e}")
                     msg += "   ❌ 记录处理错误\n\n"
             
             # 添加分页导航按钮
@@ -438,8 +438,8 @@ class TrafficPlugin(BasePlugin):
             await event.reply(msg, buttons=buttons if buttons else None)
         except Exception as e:
             import traceback
-            logger.error(f"获取转发历史失败: {e}")
-            logger.error(f"详细错误信息: {traceback.format_exc()}")
+            self.logger.error(f"获取转发历史失败: {e}")
+            self.logger.error(f"详细错误信息: {traceback.format_exc()}")
             await event.reply(f"❌ 获取转发历史失败: {str(e)}")
     
     async def _handle_history_navigation(self, event):
@@ -520,27 +520,27 @@ class TrafficPlugin(BasePlugin):
                         msg += f"   状态: {status_cn}\n"
                         msg += f"   类型: {media_type_cn}\n\n"
                     except Exception as e:
-                        logger.error(f"处理历史记录时出错: {e}")
+                        self.logger.error(f"处理历史记录时出错: {e}")
                         msg += "   ❌ 记录处理错误\n\n"
-                
-                # 添加分页导航按钮
-                from telethon.tl.types import KeyboardButtonCallback
-                
-                buttons = []
-                if page > 1:
-                    buttons.append([KeyboardButtonCallback('⬅️ 上一页', f'history_page_{page-1}'.encode())])
-                
-                # 这里简化处理，总是显示下一页按钮
-                # 实际应用中应该检查是否还有更多记录
-                buttons.append([KeyboardButtonCallback('➡️ 下一页', f'history_page_{page+1}'.encode())])
-                
-                # 编辑消息内容和按钮
-                await event.edit(msg, buttons=buttons)
-                await event.answer()
+            
+            # 添加分页导航按钮
+            from telethon.tl.types import KeyboardButtonCallback
+            
+            buttons = []
+            if page > 1:
+                buttons.append([KeyboardButtonCallback('⬅️ 上一页', f'history_page_{page-1}'.encode())])
+            
+            # 这里简化处理，总是显示下一页按钮
+            # 实际应用中应该检查是否还有更多记录
+            buttons.append([KeyboardButtonCallback('➡️ 下一页', f'history_page_{page+1}'.encode())])
+            
+            # 编辑消息内容和按钮
+            await event.edit(msg, buttons=buttons)
+            await event.answer()
         except Exception as e:
             import traceback
-            logger.error(f"导航失败: {e}")
-            logger.error(f"详细错误信息: {traceback.format_exc()}")
+            self.logger.error(f"导航失败: {e}")
+            self.logger.error(f"详细错误信息: {traceback.format_exc()}")
             await event.answer(f"❌ 导航失败: {str(e)}")
     
     async def _clear_history(self, event):

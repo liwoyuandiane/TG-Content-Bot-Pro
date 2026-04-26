@@ -69,7 +69,7 @@ class DatabaseManager:
         self._last_health_check = None
         self._connection_errors = 0
         self._max_connection_errors = 3
-        self._connect()
+        # 不立即连接，延迟到第一次使用时
     
     def _connect(self) -> None:
         """连接到MongoDB数据库
@@ -155,6 +155,10 @@ class DatabaseManager:
         实现智能重试和错误计数机制。
         """
         if not self.client:
+            # 如果MONGO_DB未配置，不尝试重连
+            if not settings.MONGO_DB:
+                logger.debug("未配置MongoDB连接字符串，跳过连接检查")
+                return
             self._connect()
             return
         
@@ -199,6 +203,8 @@ class DatabaseManager:
         Returns:
             bool: 数据库是否连接成功
         """
+        if not settings.MONGO_DB:
+            return False
         if not self.client or self.db is None:
             return False
         
@@ -744,9 +750,16 @@ class DatabaseManager:
                 return False
             
             try:
+                # 验证task_id是否为有效的ObjectId
+                obj_id = ObjectId(task_id)
+            except Exception:
+                logger.error(f"无效的task_id格式: {task_id}")
+                return False
+            
+            try:
                 self._ensure_connection()
                 result = self.db.batch_tasks.update_one(
-                    {"_id": ObjectId(task_id)},
+                    {"_id": obj_id},
                     {"$set": {"completed_count": completed_count}}
                 )
                 return result.modified_count > 0
@@ -768,9 +781,16 @@ class DatabaseManager:
                 return False
             
             try:
+                # 验证task_id是否为有效的ObjectId
+                obj_id = ObjectId(task_id)
+            except Exception:
+                logger.error(f"无效的task_id格式: {task_id}")
+                return False
+            
+            try:
                 self._ensure_connection()
                 result = self.db.batch_tasks.update_one(
-                    {"_id": ObjectId(task_id)},
+                    {"_id": obj_id},
                     {
                         "$set": {
                             "status": "completed",

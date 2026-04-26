@@ -26,15 +26,15 @@ class HelpPlugin(BasePlugin):
             logger.error("Bot客户端未初始化，无法注册事件处理器")
             return
         
-        # 注册消息处理器
-        self.drone.add_event_handler(self.help_command, events.NewMessage(incoming=True, pattern="/help"))
+        # 注册消息处理器 - 使用更精确的匹配
+        self.drone.add_event_handler(self.help_command, events.NewMessage(incoming=True, pattern=r'^/help\b'))
         
         logger.info(f"帮助插件事件处理器已注册")
     
     async def on_unload(self):
         """插件卸载时移除事件处理器"""
         # 移除事件处理器
-        self.drone.remove_event_handler(self.help_command, events.NewMessage(incoming=True, pattern="/help"))
+        self.drone.remove_event_handler(self.help_command, events.NewMessage(incoming=True, pattern=r'^/help\b'))
         
         logger.info("帮助插件事件处理器已移除")
     

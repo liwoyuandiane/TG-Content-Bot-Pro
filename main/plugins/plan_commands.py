@@ -22,15 +22,15 @@ class PlanPlugin(BasePlugin):
         """插件加载时注册事件处理器"""
         client_manager.bot.add_event_handler(
             self._plan_command,
-            events.NewMessage(incoming=True, pattern='/plan')
+            events.NewMessage(incoming=True, pattern=r'^/plan\b')
         )
         client_manager.bot.add_event_handler(
             self._upgrade_command,
-            events.NewMessage(incoming=True, pattern='/upgrade')
+            events.NewMessage(incoming=True, pattern=r'^/upgrade\b')
         )
         client_manager.bot.add_event_handler(
             self._downgrade_command,
-            events.NewMessage(incoming=True, pattern='/downgrade')
+            events.NewMessage(incoming=True, pattern=r'^/downgrade\b')
         )
         
         self.logger.info("用户计划管理插件事件处理器已注册")
@@ -39,15 +39,15 @@ class PlanPlugin(BasePlugin):
         """插件卸载时移除事件处理器"""
         client_manager.bot.remove_event_handler(
             self._plan_command,
-            events.NewMessage(incoming=True, pattern='/plan')
+            events.NewMessage(incoming=True, pattern=r'^/plan\b')
         )
         client_manager.bot.remove_event_handler(
             self._upgrade_command,
-            events.NewMessage(incoming=True, pattern='/upgrade')
+            events.NewMessage(incoming=True, pattern=r'^/upgrade\b')
         )
         client_manager.bot.remove_event_handler(
             self._downgrade_command,
-            events.NewMessage(incoming=True, pattern='/downgrade')
+            events.NewMessage(incoming=True, pattern=r'^/downgrade\b')
         )
         
         self.logger.info("用户计划管理插件事件处理器已移除")

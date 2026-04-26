@@ -85,9 +85,6 @@ class Settings:
         self.CONNECT_TIMEOUT: int = self._get_config("CONNECT_TIMEOUT", default=30, cast=int)
         self.READ_TIMEOUT: int = self._get_config("READ_TIMEOUT", default=60, cast=int)
         
-        # 转发服务配置
-        self.DISABLE_DOWNLOAD_UPLOAD: bool = self._get_config("DISABLE_DOWNLOAD_UPLOAD", default=True, cast=bool)  # 已废弃，不影响功能
-        
         # 批量处理限制配置
         self.FREEMIUM_LIMIT: int = self._get_config("FREEMIUM_LIMIT", default=0, cast=int)  # 免费用户不能批量
         self.PREMIUM_LIMIT: int = self._get_config("PREMIUM_LIMIT", default=10, cast=int)
@@ -189,6 +186,10 @@ class Settings:
             errors.append("CONNECT_TIMEOUT 必须大于0")
         if self.READ_TIMEOUT <= 0:
             errors.append("READ_TIMEOUT 必须大于0")
+        
+        # 验证健康检查端口
+        if self.HEALTH_CHECK_PORT < 1024 or self.HEALTH_CHECK_PORT > 65535:
+            errors.append("HEALTH_CHECK_PORT 必须在 1024-65535 范围内")
         
         # 验证批量处理限制
         if self.FREEMIUM_LIMIT < 0:

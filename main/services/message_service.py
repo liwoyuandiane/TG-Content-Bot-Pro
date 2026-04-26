@@ -6,9 +6,6 @@ from pyrogram import Client
 from pyrogram.errors import ChannelBanned, ChannelInvalid, ChannelPrivate, ChatIdInvalid, ChatInvalid, PeerIdInvalid
 from telethon import TelegramClient
 from ..core.database import db_manager
-from ..services.traffic_service import traffic_service
-from ..utils.media_utils import progress_for_pyrogram
-from ..utils.file_manager import file_manager
 from ..utils.error_handler import safe_execute
 
 logger = logging.getLogger(__name__)
@@ -23,7 +20,6 @@ class MessageService:
     def __init__(self) -> None:
         """初始化消息服务"""
         self.db = db_manager
-        self.traffic = traffic_service
     
     @safe_execute(default_return=False)
     async def get_msg(self, userbot: Client, client: Client, telethon_bot: TelegramClient, 

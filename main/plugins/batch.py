@@ -26,9 +26,9 @@ class BatchPlugin(BasePlugin):
         """插件加载时注册事件处理器"""
         # 注册命令处理器 - 不再使用from_users限制，在handler内进行权限检查
         client_manager.bot.add_event_handler(self._cancel_command, events.NewMessage(
-            incoming=True, pattern='/cancel'))
+            incoming=True, pattern=r'^/cancel\b'))
         client_manager.bot.add_event_handler(self._batch_command, events.NewMessage(
-            incoming=True, pattern='/batch'))
+            incoming=True, pattern=r'^/batch\b'))
         
         self.logger.info("批量转发插件事件处理器已注册")
     
@@ -36,9 +36,9 @@ class BatchPlugin(BasePlugin):
         """插件卸载时移除事件处理器"""
         # 移除事件处理器 - 不再使用from_users限制，在handler内进行权限检查
         client_manager.bot.remove_event_handler(self._cancel_command, events.NewMessage(
-            incoming=True, pattern='/cancel'))
+            incoming=True, pattern=r'^/cancel\b'))
         client_manager.bot.remove_event_handler(self._batch_command, events.NewMessage(
-            incoming=True, pattern='/batch'))
+            incoming=True, pattern=r'^/batch\b'))
         
         self.logger.info("批量转发插件事件处理器已移除")
     
@@ -62,10 +62,12 @@ class BatchPlugin(BasePlugin):
             await event.reply("❌ 未配置 SESSION，无法使用批量转发功能\n\n使用 /addsession 添加 SESSION")
             return
         
-        # 检查强制订阅
+        # 检查强制订阅 - TODO: 需要实现完整的强制订阅检查逻辑
+        # 需要使用 userbot.get_chat_member() 检查用户是否已订阅
         if settings.FORCESUB:
-            # 这里应该实现强制订阅检查逻辑
-            pass
+            # 强制订阅功能待实现：当FORCESUB配置时，检查用户是否关注了指定频道
+            # 参考 start.py 中的实现方式
+            self.logger.debug(f"FORCESUB配置为 {settings.FORCESUB}，跳过检查")
         
         if event.sender_id in self.batch_users:
             await event.reply("您已经开始了一个批量任务，请等待它完成！")
@@ -127,12 +129,13 @@ class BatchPlugin(BasePlugin):
             
             self.batch_users.add(event.sender_id)
             
-            # 直接运行批量转发（不通过任务队列）
-            await self._run_batch(client_manager.userbot, client_manager.pyrogram_bot, 
-                                event.sender_id, link, value, messages_to_delete)
-            
-            conv.cancel()
-            self.batch_users.discard(event.sender_id)
+            try:
+                # 直接运行批量转发（不通过任务队列）
+                await self._run_batch(client_manager.userbot, client_manager.pyrogram_bot, 
+                                    event.sender_id, link, value, messages_to_delete)
+            finally:
+                conv.cancel()
+                self.batch_users.discard(event.sender_id)
     
     @safe_execute(default_return=False)
     async def _run_batch(self, userbot: Client, client: Client, sender: int, 

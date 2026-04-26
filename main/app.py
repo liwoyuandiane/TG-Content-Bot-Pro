@@ -104,14 +104,14 @@ def release_lock():
 
 def start_health_server():
     """启动健康检查HTTP服务器"""
-    port = int(os.getenv("HEALTH_CHECK_PORT", "28089"))
     try:
+        port = settings.HEALTH_CHECK_PORT
+        
         server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
         logger.info(f"✅ 健康检查服务器已启动，端口: {port}")
         server.serve_forever()
     except Exception as e:
         logger.error(f"❌ 启动健康检查服务器失败: {e}")
-        # 不再使用备用端口，确保只在指定端口运行
         raise
 
 
@@ -240,20 +240,13 @@ async def startup():
     # 检查并重置数据库（如果需要）
     check_and_reset_database()
     
-    # 配置验证
-    try:
-        from .utils.config_validator import ensure_config_integrity
-        config_valid = ensure_config_integrity()
-        if not config_valid:
-            logger.warning("⚠️ 配置验证失败，应用将以降级模式启动")
-            logger.warning("📡 仅启动健康检查服务，无法连接到Telegram")
-            logger.warning("💡 请检查.env文件中的API_ID、API_HASH和BOT_TOKEN配置")
-            
-            # 降级模式：只启动健康检查服务
-            return False
-    except Exception as e:
-        logger.error(f"配置验证时出错: {e}", exc_info=True)
-        logger.warning("应用将以降级模式启动")
+    # 配置验证（使用 config.py 中的验证）
+    if not settings._validated:
+        logger.warning("⚠️ 配置验证失败，应用将以降级模式启动")
+        logger.warning("📡 仅启动健康检查服务，无法连接到Telegram")
+        logger.warning("💡 请检查.env文件中的API_ID、API_HASH和BOT_TOKEN配置")
+        
+        # 降级模式：只启动健康检查服务
         return False
     
     # 初始化客户端
@@ -263,9 +256,6 @@ async def startup():
     except Exception as e:
         logger.error(f"客户端初始化失败: {e}", exc_info=True)
         logger.warning("将继续启动应用，但部分功能可能不可用")
-    
-    # 启动任务队列（已移除下载功能，跳过任务队列初始化）
-    logger.info("ℹ️  已移除下载功能，跳过任务队列初始化")
     
     # 加载插件
     await load_all_plugins()
@@ -300,9 +290,6 @@ async def shutdown():
     """应用关闭"""
     logger.info("正在关闭应用...")
     
-    # 停止任务队列（已移除下载功能，跳过任务队列停止）
-    logger.info("ℹ️  已移除下载功能，跳过任务队列停止")
-    
     # 停止客户端
     await client_manager.stop_clients()
     logger.info("应用已关闭")
@@ -317,7 +304,7 @@ async def main_async():
         # 如果启动失败（配置无效），进入降级模式
         if startup_result is False:
             logger.info("📡 降级模式启动完成 - 仅健康检查服务可用")
-            logger.info("🔗 健康检查地址: http://localhost:28089/health")
+            logger.info(f"🔗 健康检查地址: http://localhost:{settings.HEALTH_CHECK_PORT}/health")
             logger.info("💡 请配置有效的Telegram API凭证以启用完整功能")
             
             # 保持应用运行，提供健康检查服务
@@ -336,7 +323,7 @@ async def main_async():
             await client_manager.bot.run_until_disconnected()
         else:
             logger.warning("⚠️ 客户端未初始化或未连接，机器人将以降级模式运行...")
-            logger.info("📡 健康检查服务器已启动，可以访问 http://localhost:28089/health 检查服务状态")
+            logger.info(f"📡 健康检查服务器已启动，可以访问 http://localhost:{settings.HEALTH_CHECK_PORT}/health 检查服务状态")
             logger.info("⏰ 应用将保持运行，等待客户端连接...")
             
             # 保持应用运行，即使客户端未连接

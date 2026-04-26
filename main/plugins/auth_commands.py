@@ -20,25 +20,25 @@ class AuthPlugin(BasePlugin):
     
     async def on_load(self):
         """插件加载时注册事件处理器"""
-        # 注册命令处理器 - 不再使用from_users限制，在handler内进行权限检查
+        # 注册命令处理器 - 使用更精确的匹配
         client_manager.bot.add_event_handler(self._authorize_user, events.NewMessage(
-            incoming=True, pattern="/authorize"))
+            incoming=True, pattern=r'^/authorize\b'))
         client_manager.bot.add_event_handler(self._unauthorize_user, events.NewMessage(
-            incoming=True, pattern="/unauthorize"))
+            incoming=True, pattern=r'^/unauthorize\b'))
         client_manager.bot.add_event_handler(self._list_authorized_users, events.NewMessage(
-            incoming=True, pattern="/authorized"))
+            incoming=True, pattern=r'^/authorized\b'))
         
         self.logger.info("授权管理插件事件处理器已注册")
     
     async def on_unload(self):
         """插件卸载时移除事件处理器"""
-        # 移除事件处理器 - 不再使用from_users限制，在handler内进行权限检查
+        # 移除事件处理器 - 使用更精确的匹配
         client_manager.bot.remove_event_handler(self._authorize_user, events.NewMessage(
-            incoming=True, pattern="/authorize"))
+            incoming=True, pattern=r'^/authorize\b'))
         client_manager.bot.remove_event_handler(self._unauthorize_user, events.NewMessage(
-            incoming=True, pattern="/unauthorize"))
+            incoming=True, pattern=r'^/unauthorize\b'))
         client_manager.bot.remove_event_handler(self._list_authorized_users, events.NewMessage(
-            incoming=True, pattern="/authorized"))
+            incoming=True, pattern=r'^/authorized\b'))
         
         self.logger.info("授权管理插件事件处理器已移除")
     

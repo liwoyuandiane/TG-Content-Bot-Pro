@@ -6,7 +6,12 @@ if os.path.exists('.env'):
     try:
         from decouple import Config, RepositoryEnv
         env_config = Config(RepositoryEnv('.env'))
-        for key in ['API_ID', 'API_HASH', 'BOT_TOKEN', 'AUTH', 'MONGO_DB', 'FORCESUB', 'SESSION', 'HEALTH_CHECK_PORT']:
+        # 主要配置键（必需）
+        main_keys = ['API_ID', 'API_HASH', 'BOT_TOKEN', 'AUTH', 'MONGO_DB']
+        # 可选配置键
+        optional_keys = ['FORCESUB', 'SESSION', 'HEALTH_CHECK_PORT', 'ENCRYPTION_KEY', 
+                     'LOG_LEVEL', 'DEBUG', 'ENVIRONMENT', 'DB_RESET']
+        for key in main_keys + optional_keys:
             try:
                 os.environ[key] = str(env_config(key))
             except Exception:
