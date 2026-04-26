@@ -1,83 +1,84 @@
 # TG Content Bot Pro
 
-A stable Telegram bot to save restricted messages from public and private channels.
+Telegram 受限内容保存机器人，支持从公开和私密频道获取消息。
 
 [Telegram](https://t.me/tgxxtq)
 
 ---
 
-## 🔧 Features
+## 🔧 功能特性
 
-- Extract content from public and private channels/groups
-- Batch processing (up to 10 files)
-- Traffic monitoring and limits
-- User authorization management
-- Premium user support
-- MongoDB database
-- Docker support
-
----
-
-## ⚡ Commands
-
-| Command | Description |
-|---------|-------------|
-| `/start` | Start the bot |
-| `/help` | Show help |
-| `/plan` | Check account info |
-| `/batch` | Batch extract messages |
-| `/cancel` | Cancel current task |
-| `/authorize` | Add authorized user (admin) |
-| `/unauthorize` | Remove authorized user (admin) |
-| `/authorized` | List authorized users (admin) |
-| `/upgrade` | Upgrade user to premium (admin) |
-| `/downgrade` | Downgrade user (admin) |
-| `/history` | View forward history (admin) |
-| `/clearhistory` | Clear history (admin) |
-| `/stats` | View bot statistics (admin) |
-| `/traffic` | View traffic stats |
-| `/queue` | View queue status (admin) |
-| `/sessions` | List all sessions (admin) |
-| `/addsession` | Add session (admin) |
-| `/delsession` | Delete session (admin) |
-| `/mysession` | View my session |
+- 支持公开和私密频道消息获取
+- 批量处理（最多10条）
+- 流量监控和限制
+- 用户授权管理
+- Premium 用户支持
+- Docker 支持
 
 ---
 
-## ⚙️ Required Variables
+## ⚡ 命令列表
 
-| Variable | Description | Where to Get |
-|----------|-------------|--------------|
+| 命令 | 说明 | 权限 |
+|------|------|------|
+| `/start` | 启动机器人 | 所有人 |
+| `/help` | 显示帮助 | 所有人 |
+| `/plan` | 账户信息 | 所有人 |
+| `/batch` | 批量获取 | 授权用户 |
+| `/cancel` | 取消任务 | 授权用户 |
+| `/authorize` | 添加授权 | 管理员 |
+| `/unauthorize` | 移除授权 | 管理员 |
+| `/authorized` | 授权列表 | 管理员 |
+| `/upgrade` | 升级 Premium | 管理员 |
+| `/downgrade` | 降级用户 | 管理员 |
+| `/history` | 转发历史 | 管理员 |
+| `/clearhistory` | 清除历史 | 管理员 |
+| `/stats` | 机器人统计 | 管理员 |
+| `/traffic` | 流量统计 | 所有人 |
+| `/queue` | 队列状态 | 管理员 |
+| `/sessions` | SESSION 列表 | 管理员 |
+| `/addsession` | 添加 SESSION | 管理员 |
+| `/delsession` | 删除 SESSION | 管理员 |
+| `/mysession` | 我的 SESSION | 管理员 |
+
+---
+
+## ⚙️ 环境变量
+
+### 必需
+
+| 变量 | 说明 | 获取 |
+|------|------|------|
 | `API_ID` | Telegram API ID | [my.telegram.org](https://my.telegram.org) |
 | `API_HASH` | Telegram API Hash | [my.telegram.org](https://my.telegram.org) |
 | `BOT_TOKEN` | Bot Token | [@BotFather](https://t.me/BotFather) |
-| `AUTH` | Owner User ID | [@userinfobot](https://t.me/userinfobot) |
-| `MONGO_DB` | MongoDB Connection String | [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) |
-| `ENCRYPTION_KEY` | Encryption Key (16-128 chars) | Custom |
+| `AUTH` | 管理员 ID | [@userinfobot](https://t.me/userinfobot) |
+| `MONGO_DB` | MongoDB 连接串 | [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) |
+| `ENCRYPTION_KEY` | 加密密钥 (16-128位) | 自定义 |
 
-### Optional Variables
+### 可选
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `SESSION` | Pyrogram session string | - |
-| `FORCESUB` | Forced subscription channel | - |
-| `LOG_LEVEL` | Log level | INFO |
-| `HEALTH_CHECK_PORT` | Health check port | 28089 |
-| `FREEMIUM_LIMIT` | Free user batch limit | 0 |
-| `PREMIUM_LIMIT` | Premium user batch limit | 10 |
+| 变量 | 说明 | 默认 |
+|------|------|------|
+| `SESSION` | Pyrogram 会话串 | - |
+| `FORCESUB` | 强制订阅频道 | - |
+| `LOG_LEVEL` | 日志级别 | INFO |
+| `HEALTH_CHECK_PORT` | 健康检查端口 | 28089 |
+| `FREEMIUM_LIMIT` | 免费用户限制 | 0 |
+| `PREMIUM_LIMIT` | Premium 限制 | 10 |
 
 ---
 
-## 🚀 Deployment
+## 🚀 部署方式
 
-### Docker (Recommended)
+### Docker 运行容器（推荐）
 
 ```bash
 docker run -d \
   --name tg-bot \
   -e API_ID=your_api_id \
   -e API_HASH=your_api_hash \
-  -e BOT_TOKEN=your_bot_token \
+  -e BOT_TOKEN=your_token \
   -e AUTH=your_user_id \
   -e MONGO_DB=your_mongo_url \
   -e ENCRYPTION_KEY=your_key \
@@ -95,43 +96,32 @@ nano .env
 docker-compose up -d
 ```
 
-### VPS / Local
+### VPS / 本地
 
 ```bash
-# Install dependencies
 pip install -r requirements.txt
-
-# Run the bot
 python3 -m main
 ```
 
-### Render
+---
 
-1. Fork the repo
-2. Create a new Web Service on Render
-3. Connect your GitHub repo
-4. Set environment variables
-5. Deploy
+## 📖 使用方法
+
+1. 发送消息链接给机器人
+2. 机器人自动转发给你
+
+支持的链接格式：
+- 公开频道：`https://t.me/channelname/messageid`
+- 私密频道：`https://t.me/c/chatid/messageid`
 
 ---
 
-## 📖 How to Use
+## 🗄️ MongoDB 注册
 
-1. Send any message link to the bot
-2. Bot will automatically forward to you
-
-Supported link formats:
-- Public: `https://t.me/channelname/messageid`
-- Private: `https://t.me/c/chatid/messageid`
-
----
-
-## 🗄️ MongoDB Setup
-
-1. Sign up at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
-2. Create a free cluster
-3. Create database user
-4. Get connection string:
+1. 访问 [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+2. 注册账号，创建免费集群
+3. 创建数据库用户
+4. 获取连接串：
 
 ```
 mongodb+srv://<username>:<password>@cluster.mongodb.net/tgbot?retryWrites=true&w=majority
@@ -139,6 +129,6 @@ mongodb+srv://<username>:<password>@cluster.mongodb.net/tgbot?retryWrites=true&w
 
 ---
 
-## 📄 License
+## 📄 许可证
 
 MIT License
