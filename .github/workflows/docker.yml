@@ -32,7 +32,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/liwoyuandiane/tg-content-bot-pro:latest
+          tags: ghcr.io/${{ github.repository_owner }}/tg-content-bot-pro:latest
           labels: |
-            org.opencontainers.image.source=https://github.com/liwoyuandiane/TG-Content-Bot-Pro
-            org.opencontainers.image.description=Telegram Content Bot Pro
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.title=TG-Content-Bot-Pro
