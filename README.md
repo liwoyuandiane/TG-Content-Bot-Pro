@@ -17,32 +17,6 @@ Telegram 受限内容保存机器人，支持从公开和私密频道获取消�
 
 ---
 
-## ⚡ 命令列表
-
-| 命令 | 说明 | 权限 |
-|------|------|------|
-| `/start` | 启动机器人 | 所有人 |
-| `/help` | 显示帮助 | 所有人 |
-| `/plan` | 账户信息 | 所有人 |
-| `/batch` | 批量获取 | 授权用户 |
-| `/cancel` | 取消任务 | 授权用户 |
-| `/authorize` | 添加授权 | 管理员 |
-| `/unauthorize` | 移除授权 | 管理员 |
-| `/authorized` | 授权列表 | 管理员 |
-| `/upgrade` | 升级 Premium | 管理员 |
-| `/downgrade` | 降级用户 | 管理员 |
-| `/history` | 转发历史 | 管理员 |
-| `/clearhistory` | 清除历史 | 管理员 |
-| `/stats` | 机器人统计 | 管理员 |
-| `/traffic` | 流量统计 | 所有人 |
-| `/queue` | 队列状态 | 管理员 |
-| `/sessions` | SESSION 列表 | 管理员 |
-| `/addsession` | 添加 SESSION | 管理员 |
-| `/delsession` | 删除 SESSION | 管理员 |
-| `/mysession` | 我的 SESSION | 管理员 |
-
----
-
 ## ⚙️ 环境变量
 
 ### 必需
@@ -99,6 +73,8 @@ docker-compose up -d
 ### VPS / 本地
 
 ```bash
+git clone https://github.com/liwoyuandiane/TG-Content-Bot-Pro.git
+cd TG-Content-Bot-Pro
 pip install -r requirements.txt
 python3 -m main
 ```
@@ -113,6 +89,32 @@ python3 -m main
 支持的链接格式：
 - 公开频道：`https://t.me/channelname/messageid`
 - 私密频道：`https://t.me/c/chatid/messageid`
+
+---
+
+## ⚡ 命令列表
+
+| 命令 | 说明 | 权限 |
+|------|------|------|
+| `/start` | 启动机器人 | 所有人 |
+| `/help` | 显示帮助 | 所有人 |
+| `/plan` | 账户信息 | 所有人 |
+| `/batch` | 批量获取 | 授权用户 |
+| `/cancel` | 取消任务 | 授权用户 |
+| `/authorize` | 添加授权 | 管理员 |
+| `/unauthorize` | 移除授权 | 管理员 |
+| `/authorized` | 授权列表 | 管理员 |
+| `/upgrade` | 升级 Premium | 管理员 |
+| `/downgrade` | 降级用户 | 管理员 |
+| `/history` | 转发历史 | 管理员 |
+| `/clearhistory` | 清除历史 | 管理员 |
+| `/stats` | 机器人统计 | 管理员 |
+| `/traffic` | 流量统计 | 所有人 |
+| `/queue` | 队列状态 | 管理员 |
+| `/sessions` | SESSION 列表 | 管理员 |
+| `/addsession` | 添加 SESSION | 管理员 |
+| `/delsession` | 删除 SESSION | 管理员 |
+| `/mysession` | 我的 SESSION | 管理员 |
 
 ---
 
