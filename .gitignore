@@ -1,0 +1,135 @@
+# .gitignore - Git版本控制忽略文件
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+*.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+env/
+venv*/
+pyvenv.cfg
+
+# Telegram Session files (contains sensitive authentication)
+*.session
+*.session-journal
+bot.session
+SaveRestricted.session
+test_bot.session
+
+# Environment variables (contains secrets)
+.env
+.env.local
+.env.backup
+.env.bak
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+*.sublime-project
+*.sublime-workspace
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+
+# Logs
+logs/
+*.log
+*.log.*
+
+# OS specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Temporary
+temp/
+tmp/
+*.tmp
+*.temp
+*.bak
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.mdb
+*.accdb
+
+# Cache and runtime
+.cache/
+.runtime/
+*.cache
+*.pid
+*.lock
+.app.lock
+
+# Project specific
+.db_initialized
+.pyc
+.pyo
+.pyd
+
+# Do not ignore AGENTS.md for the project
+# AGENTS.md
+
+# Test scripts (not part of the project)
+test_bot_commands.py
+
+# Media files (may contain sensitive content)
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+*.webp
+*.mp4
+*.avi
+*.mov
+*.wmv
+*.flv
+*.mkv

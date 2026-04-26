@@ -1,0 +1,48 @@
+version: "3.8"
+
+services:
+  tg-bot:
+    build: .
+    container_name: tg-content-bot
+    restart: unless-stopped
+    
+    # 环境变量配置
+    env_file:
+      - .env
+    
+    # 或者使用environment配置（适合CI/CD）
+    # environment:
+    #   # 必需配置
+    #   API_ID: ${API_ID}
+    #   API_HASH: ${API_HASH}
+    #   BOT_TOKEN: ${BOT_TOKEN}
+    #   AUTH: ${AUTH}
+    #   MONGO_DB: ${MONGO_DB}
+    #   
+    #   # 可选配置
+    #   SESSION: ${SESSION:-}
+    #   FORCESUB: ${FORCESUB:-}
+    #   HEALTH_CHECK_PORT: ${HEALTH_CHECK_PORT:-8089}
+    
+    # 端口映射 - 用于健康检查
+    ports:
+      - "28089:28089"
+    
+    # 卷挂载 - 用于日志持久化
+    volumes:
+      - ./logs:/app/logs
+    
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # 健康检查（Docker层面）
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:28089/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
