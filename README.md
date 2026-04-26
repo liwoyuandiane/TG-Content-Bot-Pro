@@ -92,6 +92,19 @@ python3 -m main
 
 ---
 
+## 🗄️ MongoDB 注册
+
+1. 访问 [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+2. 注册账号，创建免费集群
+3. 创建数据库用户
+4. 获取连接串：
+
+```
+mongodb+srv://<username>:<password>@cluster.mongodb.net/tgbot?retryWrites=true&w=majority
+```
+
+---
+
 ## ⚡ 命令列表
 
 | 命令 | 说明 | 权限 |
@@ -115,19 +128,6 @@ python3 -m main
 | `/addsession` | 添加 SESSION | 管理员 |
 | `/delsession` | 删除 SESSION | 管理员 |
 | `/mysession` | 我的 SESSION | 管理员 |
-
----
-
-## 🗄️ MongoDB 注册
-
-1. 访问 [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
-2. 注册账号，创建免费集群
-3. 创建数据库用户
-4. 获取连接串：
-
-```
-mongodb+srv://<username>:<password>@cluster.mongodb.net/tgbot?retryWrites=true&w=majority
-```
 
 ---
 
