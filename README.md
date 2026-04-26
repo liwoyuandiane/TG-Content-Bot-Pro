@@ -28,7 +28,7 @@ Telegram 受限内容保存机器人，支持从公开和私密频道获取消�
 | `BOT_TOKEN` | Bot Token | [@BotFather](https://t.me/BotFather) |
 | `AUTH` | 管理员 ID | [@userinfobot](https://t.me/userinfobot) |
 | `MONGO_DB` | MongoDB 连接串 | [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) |
-| `ENCRYPTION_KEY` | 加密密钥 (16-128位) | 自定义 |
+| `ENCRYPTION_KEY` | 加密密钥 (4-64位) | 自定义 |
 
 ### 可选
 

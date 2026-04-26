@@ -169,14 +169,8 @@ class ConfigValidator:
         # 加密密钥验证（如果存在）
         if settings.ENCRYPTION_KEY:
             key_length = len(settings.ENCRYPTION_KEY)
-            if key_length < 3:
-                self.errors.append(f"ENCRYPTION_KEY 长度过短，必须在3-128个字符之间，当前为 {key_length} 位")
-            elif key_length > 128:
-                self.errors.append(f"ENCRYPTION_KEY 长度过长，必须在3-128个字符之间，当前为 {key_length} 位")
-            elif key_length < 16:
-                self.warnings.append(f"ENCRYPTION_KEY 长度较短（{key_length} 位），建议至少16位以提高安全性")
-            elif key_length < 32:
-                self.warnings.append(f"ENCRYPTION_KEY 长度建议至少32位以提高安全性，当前为 {key_length} 位")
+            if key_length < 4:
+                self.warnings.append(f"ENCRYPTION_KEY 长度过短（{key_length} 位），建议至少4位")
     
     def _validate_environment_config(self) -> None:
         """验证环境相关配置"""
