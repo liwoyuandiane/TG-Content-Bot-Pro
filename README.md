@@ -35,7 +35,7 @@ Telegram 受限内容保存机器人，支持从公开和私密频道获取消�
 | 变量 | 说明 | 默认 |
 |------|------|------|
 | `SESSION` | Pyrogram 会话串 | - |
-| `FORCESUB` | 强制订阅频道 | - |
+| `FORCESUB` | 强制订阅频道 | tgxxtq |
 | `LOG_LEVEL` | 日志级别 | INFO |
 | `HEALTH_CHECK_PORT` | 健康检查端口 | 28089 |
 | `FREEMIUM_LIMIT` | 免费用户限制 | 0 |
