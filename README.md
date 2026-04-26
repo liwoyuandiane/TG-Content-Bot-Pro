@@ -17,8 +17,6 @@
 
 ## 🚀 快速开始
 
-### 方式一：直接运行容器（推荐）
-
 ```bash
 docker run -d \
   --name tg-bot \
@@ -30,21 +28,6 @@ docker run -d \
   -e ENCRYPTION_KEY=your_key \
   -p 28089:28089 \
   ghcr.io/liwoyuandiane/tg-content-bot-pro:latest
-```
-
-### 方式二：本地构建部署
-
-```bash
-# 克隆项目
-git clone https://github.com/liwoyuandiane/TG-Content-Bot-Pro.git
-cd TG-Content-Bot-Pro
-
-# 配置环境变量
-cp .env.example .env
-nano .env
-
-# 启动服务
-docker-compose up -d
 ```
 
 ---
@@ -72,6 +55,65 @@ docker-compose up -d
 | `HEALTH_CHECK_PORT` | 健康检查端口 | 28089 |
 | `FREEMIUM_LIMIT` | 免费用户批量限制 | 0 |
 | `PREMIUM_LIMIT` | 付费用户批量限制 | 10 |
+
+---
+
+## 🛠️ 部署方式
+
+### Docker 运行容器
+
+```bash
+docker run -d \
+  --name tg-bot \
+  -e API_ID=your_api_id \
+  -e API_HASH=your_api_hash \
+  -e BOT_TOKEN=your_bot_token \
+  -e AUTH=your_user_id \
+  -e MONGO_DB=your_mongo_url \
+  -e ENCRYPTION_KEY=your_key \
+  -p 28089:28089 \
+  ghcr.io/liwoyuandiane/tg-content-bot-pro:latest
+```
+
+### Docker Compose
+
+```bash
+# 克隆项目
+git clone https://github.com/liwoyuandiane/TG-Content-Bot-Pro.git
+cd TG-Content-Bot-Pro
+
+# 配置环境变量
+cp .env.example .env
+nano .env
+
+# 启动服务
+docker-compose up -d
+
+# 查看日志
+docker-compose logs -f
+```
+
+### Python 手动部署
+
+```bash
+# 克隆项目
+git clone https://github.com/liwoyuandiane/TG-Content-Bot-Pro.git
+cd TG-Content-Bot-Pro
+
+# 创建虚拟环境
+python3 -m venv venv
+source venv/bin/activate
+
+# 安装依赖
+pip install -r requirements.txt
+
+# 配置环境变量
+cp .env.example .env
+nano .env
+
+# 启动机器人
+python3 -m main
+```
 
 ---
 
@@ -109,30 +151,6 @@ docker-compose up -d
 支持的消息链接格式：
 - 公开频道：`https://t.me/channelname/messageid`
 - 私密频道：`https://t.me/c/chatid/messageid`
-
----
-
-## 🔧 手动部署（Python）
-
-```bash
-# 克隆项目
-git clone https://github.com/liwoyuandiane/TG-Content-Bot-Pro.git
-cd TG-Content-Bot-Pro
-
-# 创建虚拟环境
-python3 -m venv venv
-source venv/bin/activate
-
-# 安装依赖
-pip install -r requirements.txt
-
-# 配置环境变量
-cp .env.example .env
-nano .env
-
-# 启动机器人
-python3 -m main
-```
 
 ---
 
