@@ -17,13 +17,9 @@
 
 ## 🚀 快速开始
 
-### 使用预构建镜像（推荐）
+### 方式一：直接运行容器（推荐）
 
 ```bash
-# 拉取镜像
-docker pull ghcr.io/liwoyuandiane/tg-content-bot-pro:latest
-
-# 运行容器
 docker run -d \
   --name tg-bot \
   -e API_ID=your_api_id \
@@ -36,22 +32,19 @@ docker run -d \
   ghcr.io/liwoyuandiane/tg-content-bot-pro:latest
 ```
 
-### 下载代码 Docker 部署
+### 方式二：本地构建部署
 
 ```bash
-# 1. 克隆项目
+# 克隆项目
 git clone https://github.com/liwoyuandiane/TG-Content-Bot-Pro.git
 cd TG-Content-Bot-Pro
 
-# 2. 配置环境变量
+# 配置环境变量
 cp .env.example .env
 nano .env
 
-# 3. 启动服务
+# 启动服务
 docker-compose up -d
-
-# 4. 查看日志
-docker-compose logs -f
 ```
 
 ---
@@ -79,48 +72,6 @@ docker-compose logs -f
 | `HEALTH_CHECK_PORT` | 健康检查端口 | 28089 |
 | `FREEMIUM_LIMIT` | 免费用户批量限制 | 0 |
 | `PREMIUM_LIMIT` | 付费用户批量限制 | 10 |
-
----
-
-## 🐳 Docker 部署
-
-### 1. 配置环境变量
-
-```bash
-cp .env.example .env
-nano .env
-```
-
-`.env` 文件内容示例：
-
-```bash
-# 必需配置
-API_ID=12345678
-API_HASH=abcdef1234567890abcdef1234567890
-BOT_TOKEN=1234567890:ABCdefGhIJKLMNOPqrstUVwXYz123456
-AUTH=123456789
-MONGO_DB=mongodb+srv://username:password@cluster.mongodb.net/tgbot?retryWrites=true&w=majority
-ENCRYPTION_KEY=your_secure_key_here_at_least_16_chars
-
-# 可选配置
-LOG_LEVEL=INFO
-```
-
-### 2. 启动服务
-
-```bash
-docker-compose up -d
-```
-
-### 3. 检查状态
-
-```bash
-# 查看日志
-docker-compose logs -f
-
-# 健康检查
-curl http://localhost:28089/health
-```
 
 ---
 
@@ -161,7 +112,7 @@ curl http://localhost:28089/health
 
 ---
 
-## 🔧 手动部署
+## 🔧 手动部署（Python）
 
 ```bash
 # 克隆项目
