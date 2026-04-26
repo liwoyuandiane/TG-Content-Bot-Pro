@@ -17,39 +17,13 @@ Telegram 受限内容保存机器人，支持从公开和私密频道获取消�
 
 ---
 
-## ⚙️ 环境变量
-
-### 必需
-
-| 变量 | 说明 | 获取 |
-|------|------|------|
-| `API_ID` | Telegram API ID | [my.telegram.org](https://my.telegram.org) |
-| `API_HASH` | Telegram API Hash | [my.telegram.org](https://my.telegram.org) |
-| `BOT_TOKEN` | Bot Token | [@BotFather](https://t.me/BotFather) |
-| `AUTH` | 管理员 ID | [@userinfobot](https://t.me/userinfobot) |
-| `MONGO_DB` | MongoDB 连接串 | [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) |
-| `ENCRYPTION_KEY` | 加密密钥 (4-64位) | 自定义 |
-
-### 可选
-
-| 变量 | 说明 | 默认 |
-|------|------|------|
-| `SESSION` | Pyrogram 会话串 | - |
-| `FORCESUB` | 强制订阅频道 | tgxxtq |
-| `LOG_LEVEL` | 日志级别 | INFO |
-| `HEALTH_CHECK_PORT` | 健康检查端口 | 28089 |
-| `FREEMIUM_LIMIT` | 免费用户限制 | 0 |
-| `PREMIUM_LIMIT` | Premium 限制 | 10 |
-
----
-
 ## 🚀 部署方式
 
 ### Docker 运行容器（推荐）
 
 ```bash
 docker run -d \
-  --name tg-bot \
+  --name tg-content-bot-pro \
   -e API_ID=your_api_id \
   -e API_HASH=your_api_hash \
   -e BOT_TOKEN=your_token \
@@ -75,6 +49,8 @@ docker-compose up -d
 ```bash
 git clone https://github.com/liwoyuandiane/TG-Content-Bot-Pro.git
 cd TG-Content-Bot-Pro
+cp .env.example .env
+nano .env
 pip install -r requirements.txt
 python3 -m main
 ```
@@ -92,6 +68,25 @@ python3 -m main
 
 ---
 
+## ⚙️ 环境变量说明
+
+| 变量名 | 必填 | 示例 | 详细备注 |
+|--------|:----:|------|----------|
+| `API_ID` | ✅ | `your_api_id` | Telegram API ID，从 [my.telegram.org](https://my.telegram.org) 获取 |
+| `API_HASH` | ✅ | `your_api_hash` | Telegram API Hash，32位字符，从 [my.telegram.org](https://my.telegram.org) 获取 |
+| `BOT_TOKEN` | ✅ | `your_bot_token` | Bot Token，从 [@BotFather](https://t.me/BotFather) 获取 |
+| `AUTH` | ✅ | `your_user_id` | 管理员用户 ID，支持多个用逗号分隔，从 [@userinfobot](https://t.me/userinfobot) 获取 |
+| `MONGO_DB` | ✅ | `mongodb+srv://...` | MongoDB 连接串，从 [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) 获取 |
+| `ENCRYPTION_KEY` | ❌ | `your_key_here` | 加密密钥，4-64位字符，用于加密 SESSION |
+| `SESSION` | ❌ | `Pyrogram session string` | Pyrogram 会话串，用于访问私有频道 |
+| `FORCESUB` | ❌ | `tgxxtq` | 强制订阅频道用户名，不带 @ 符号 |
+| `LOG_LEVEL` | ❌ | `INFO` | 日志级别，默认 INFO |
+| `HEALTH_CHECK_PORT` | ❌ | `28089` | 健康检查端口，默认 28089 |
+| `FREEMIUM_LIMIT` | ❌ | `0` | 免费用户批量限制，默认 0 |
+| `PREMIUM_LIMIT` | ❌ | `10` | Premium 用户批量限制，默认 10 |
+
+---
+
 ## 🗄️ MongoDB 注册
 
 1. 访问 [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
@@ -105,29 +100,14 @@ mongodb+srv://<username>:<password>@cluster.mongodb.net/tgbot?retryWrites=true&w
 
 ---
 
-## ⚡ 命令列表
+## ⚡ 常用命令
 
-| 命令 | 说明 | 权限 |
-|------|------|------|
-| `/start` | 启动机器人 | 所有人 |
-| `/help` | 显示帮助 | 所有人 |
-| `/plan` | 账户信息 | 所有人 |
-| `/batch` | 批量获取 | 授权用户 |
-| `/cancel` | 取消任务 | 授权用户 |
-| `/authorize` | 添加授权 | 管理员 |
-| `/unauthorize` | 移除授权 | 管理员 |
-| `/authorized` | 授权列表 | 管理员 |
-| `/upgrade` | 升级 Premium | 管理员 |
-| `/downgrade` | 降级用户 | 管理员 |
-| `/history` | 转发历史 | 管理员 |
-| `/clearhistory` | 清除历史 | 管理员 |
-| `/stats` | 机器人统计 | 管理员 |
-| `/traffic` | 流量统计 | 所有人 |
-| `/queue` | 队列状态 | 管理员 |
-| `/sessions` | SESSION 列表 | 管理员 |
-| `/addsession` | 添加 SESSION | 管理员 |
-| `/delsession` | 删除 SESSION | 管理员 |
-| `/mysession` | 我的 SESSION | 管理员 |
+| 命令 | 说明 |
+|------|------|
+| `/start` | 启动机器人 |
+| `/help` | 显示帮助 |
+| `/batch` | 批量获取消息 |
+| `/cancel` | 取消任务 |
 
 ---
 
