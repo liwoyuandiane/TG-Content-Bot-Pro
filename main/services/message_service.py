@@ -99,9 +99,42 @@ class MessageService:
                 await self.db.add_forward(sender, msg_link, msg_id, str(chat), "error", 0, "failed")
                 return False
         else:
-            # 公开频道消息 - 先检查消息是否可用
             edit = await client.edit_message_text(sender, edit_id, "克隆中...")
             chat = msg_link.split("t.me")[1].split("/")[1]
+            
+            # 如果是群组用户名（包含字母），尝试使用 SESSION
+            if not chat.isdigit():
+                if userbot:
+                    try:
+                        await edit.edit("正在转发...")
+                        
+                        # 先解析用户 peer（解决 Peer id invalid 问题）
+                        try:
+                            await userbot.resolve_peer(sender)
+                        except:
+                            pass  # 如果解析失败，继续尝试转发
+                        
+                        # 使用 userbot 的 forward_messages 直接转发消息到用户
+                        # 参数: chat_id=目标用户, from_chat_id=源频道, message_ids=消息ID
+                        await userbot.forward_messages(sender, chat, msg_id)
+                        
+                        await edit.delete()
+                        await self.db.add_forward(sender, msg_link, msg_id, chat, "forwarded", 0, "success")
+                        return True
+                    except Exception as e:
+                        err = str(e)
+                        logger.error(f"转发失败: {e}", exc_info=True)
+                        await edit.delete()
+                        if "PEER_ID_INVALID" in err:
+                            await client.send_message(sender, "⚠️ 请先用你的账号加入该群组\n\n然后重试")
+                        else:
+                            await client.send_message(sender, f"❌ 转发失败\n\n{err[:100]}")
+                        return False
+                else:
+                    await edit.delete()
+                    await client.send_message(sender, "⚠️ 需要配置 SESSION\n\n使用 /generatesession")
+                    return False
+            
             try:
                 # 先获取消息检查其状态
                 check_msg = await client.get_messages(chat, msg_id)

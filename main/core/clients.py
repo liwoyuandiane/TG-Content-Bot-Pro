@@ -81,7 +81,8 @@ class ClientManager:
                 app_version="10.2.0",
                 device_model="iPhone 15 Pro Max",
                 system_version="iOS 17.5",
-                lang_code="en"
+                lang_code="en",
+                sleep_threshold=60  # 自动处理 60 秒以内的 FLOOD_WAIT
             )
             
             logger.info("Pyrogram bot客户端实例创建完成")
@@ -93,13 +94,21 @@ class ClientManager:
         """启动所有已创建的客户端"""
         # 启动Telethon bot
         if self.bot:
-            await self.bot.start(bot_token=settings.BOT_TOKEN)
-            logger.info("Telethon bot客户端启动成功")
+            try:
+                await self.bot.start(bot_token=settings.BOT_TOKEN)
+                logger.info("Telethon bot客户端启动成功")
+            except Exception as e:
+                logger.error(f"Telethon bot启动失败: {e}")
+                self.bot = None
         
         # 启动Pyrogram bot
         if self.pyrogram_bot:
-            await self.pyrogram_bot.start()
-            logger.info("Pyrogram bot客户端启动成功")
+            try:
+                await self.pyrogram_bot.start()
+                logger.info("Pyrogram bot客户端启动成功")
+            except Exception as e:
+                logger.error(f"Pyrogram bot启动失败: {e}")
+                self.pyrogram_bot = None
     
     async def _initialize_userbot(self):
         """初始化Userbot客户端"""
@@ -123,12 +132,16 @@ class ClientManager:
         """从会话服务加载SESSION"""
         # 获取第一个授权用户ID
         auth_users = settings.get_auth_users()
+        logger.info(f"尝试从数据库加载SESSION, 授权用户列表: {auth_users}")
         if auth_users:
             user_id = auth_users[0]
+            logger.info(f"正在获取用户 {user_id} 的SESSION...")
             user_session = await self.session_svc.get_session(user_id)
             if user_session:
                 settings.SESSION = user_session
                 logger.info("从会话服务加载SESSION成功")
+            else:
+                logger.warning(f"用户 {user_id} 未在数据库中找到SESSION")
         else:
             logger.warning("未找到授权用户，无法加载SESSION")
     
@@ -152,7 +165,8 @@ class ClientManager:
             app_version="Pyrogram 2.0.106",
             device_model="Session Generator",
             system_version="Linux 5.4",
-            lang_code="en"
+            lang_code="en",
+            sleep_threshold=60  # 自动处理 60 秒以内的 FLOOD_WAIT
         )
         
         # 尝试启动Userbot

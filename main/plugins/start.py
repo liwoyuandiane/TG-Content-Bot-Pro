@@ -114,9 +114,12 @@ class StartPlugin(BasePlugin):
         """处理 /start 命令"""
         from ..config import settings
         
+        from ..services.permission_service import permission_service
+        owner_ids = permission_service._get_owner_ids()
+        
         user_id = event.sender_id
         
-        logger.info(f"收到 /start 命令，用户ID: {user_id}, 授权ID: {settings.AUTH}")
+        logger.info(f"收到 /start 命令，用户ID: {user_id}, 授权IDs: {owner_ids}")
         
         # 只允许授权用户使用
         if not await user_service.is_user_authorized(user_id):

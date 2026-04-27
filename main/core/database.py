@@ -154,6 +154,7 @@ class DatabaseManager:
         检查数据库连接状态，如果连接失效则重新连接。
         实现智能重试和错误计数机制。
         """
+        logger.info(f"检查数据库连接: client={self.client is not None}, db={self.db is not None}")
         if not self.client:
             # 如果MONGO_DB未配置，不尝试重连
             if not settings.MONGO_DB:
@@ -1108,12 +1109,12 @@ class DatabaseManager:
             bool: 操作是否成功
         """
         async with self._lock:
-            if self.db is None:
-                logger.error("数据库未连接，无法保存SESSION")
-                return False
-            
             try:
                 self._ensure_connection()
+                if self.db is None:
+                    logger.error("数据库连接失败，无法保存SESSION")
+                    return False
+                
                 result = self.db.users.update_one(
                     {"user_id": user_id},
                     {
@@ -1142,13 +1143,23 @@ class DatabaseManager:
             Optional[str]: SESSION字符串，如果不存在则返回None
         """
         async with self._lock:
+            # 先确保数据库连接
             if self.db is None:
+                self._ensure_connection()
+            
+            if self.db is None:
+                logger.error("get_session: 无法连接数据库")
                 return None
             
             try:
-                self._ensure_connection()
                 user = self.db.users.find_one({"user_id": user_id})
-                return user.get("session_string") if user else None
+                if not user:
+                    logger.warning(f"get_session: user {user_id} not found")
+                    return None
+                    
+                session = user.get("session_string")
+                logger.info(f"get_session: found session, length: {len(session) if session else 0}")
+                return session
             except Exception as e:
                 logger.error(f"获取会话失败: {e}")
                 return None
