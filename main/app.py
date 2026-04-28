@@ -25,6 +25,10 @@ logger = get_logger(__name__)
 LOCK_FILE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".app.lock")
 lock_file = None
 
+# 健康检查服务器实例
+_health_server = None
+_health_thread = None
+
 
 # 健康检查处理器
 class HealthCheckHandler(BaseHTTPRequestHandler):
@@ -73,10 +77,13 @@ def acquire_lock():
                 logger.warning(f"⚠️  读取现有锁文件时出错: {e}，将重新创建锁")
         
         # 创建锁文件
-        lock_file = open(LOCK_FILE_PATH, 'w')
-        # 尝试获取独占锁
-        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        # 写入进程ID
+        try:
+            lock_file = open(LOCK_FILE_PATH, 'w')
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except Exception:
+            if lock_file:
+                lock_file.close()
+            raise
         lock_file.write(str(os.getpid()))
         lock_file.flush()
         logger.info("✅ 成功获取单实例锁")
@@ -104,15 +111,30 @@ def release_lock():
 
 def start_health_server():
     """启动健康检查HTTP服务器"""
+    global _health_server, _health_thread
     try:
         port = settings.HEALTH_CHECK_PORT
-        
-        server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
+
+        _health_server = HTTPServer(("0.0.0.0", port), HealthCheckHandler)
+        _health_thread = threading.Thread(target=_health_server.serve_forever, daemon=True)
+        _health_thread.start()
         logger.info(f"✅ 健康检查服务器已启动，端口: {port}")
-        server.serve_forever()
     except Exception as e:
         logger.error(f"❌ 启动健康检查服务器失败: {e}")
         raise
+
+
+def stop_health_server():
+    """停止健康检查HTTP服务器"""
+    global _health_server
+    if _health_server:
+        try:
+            _health_server.shutdown()
+            _health_server.server_close()
+            _health_server = None
+            logger.info("✅ 健康检查服务器已停止")
+        except Exception as e:
+            logger.error(f"❌ 停止健康检查服务器失败: {e}")
 
 
 def check_and_reset_database():
@@ -289,9 +311,13 @@ async def startup():
 async def shutdown():
     """应用关闭"""
     logger.info("正在关闭应用...")
-    
+
     # 停止客户端
     await client_manager.stop_clients()
+
+    # 停止健康检查服务器
+    stop_health_server()
+
     logger.info("应用已关闭")
 
 
@@ -351,12 +377,12 @@ def main():
         logger.info("💡 如需启动新实例，请先停止当前运行的实例")
         sys.exit(1)
     
-    # 注册退出处理函数，确保程序退出时释放锁
+    # 注册退出处理函数，确保程序退出时释放锁和关闭服务
     atexit.register(release_lock)
-    
-    # 在后台启动健康检查服务器
-    health_thread = threading.Thread(target=start_health_server, daemon=True)
-    health_thread.start()
+    atexit.register(stop_health_server)
+
+    # 启动健康检查服务器
+    start_health_server()
     
     try:
         # 使用单个事件循环运行整个应用

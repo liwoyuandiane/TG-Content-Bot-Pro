@@ -1,7 +1,4 @@
 """授权管理插件"""
-import logging
-from typing import List
-
 from ..core.base_plugin import BasePlugin
 from ..core.clients import client_manager
 from ..config import settings

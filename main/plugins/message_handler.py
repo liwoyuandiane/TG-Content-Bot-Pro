@@ -66,10 +66,13 @@ class MessageHandlerPlugin(BasePlugin):
             return
         
         # 从batch插件获取是否在批量任务中
-        from .batch import batch_plugin
-        if user_id in batch_plugin.batch_users:
-            self.logger.debug(f"用户 {user_id} 在批量任务中，跳过自动处理")
-            return
+        try:
+            from .batch import batch_plugin
+            if user_id in batch_plugin.batch_users:
+                self.logger.debug(f"用户 {user_id} 在批量任务中，跳过自动处理")
+                return
+        except Exception:
+            pass
         
         # 检查是否是回复消息（可能是对话的一部分）
         if event.is_reply:

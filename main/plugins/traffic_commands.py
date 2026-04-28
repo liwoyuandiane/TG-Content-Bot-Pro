@@ -1,6 +1,4 @@
 """流量管理插件"""
-from typing import List
-
 from ..core.base_plugin import BasePlugin
 from ..core.clients import client_manager
 from ..core.database import db_manager
@@ -9,6 +7,25 @@ from ..services.user_service import user_service
 from ..services.permission_service import permission_service
 
 from telethon import events
+
+_STATUS_MAP = {
+    "success": "✅ 成功",
+    "failed": "❌ 失败",
+    "pending": "⏳ 等待中",
+    "processing": "🔄 处理中"
+}
+
+_MEDIA_TYPE_MAP = {
+    "photo": "📸 图片",
+    "video": "🎬 视频",
+    "document": "📄 文档",
+    "audio": "🎵 音频",
+    "voice": "🎤 语音",
+    "sticker": "😀 贴纸",
+    "animation": "🎭 动画",
+    "video_note": "📺 视频消息",
+    "unknown": "❓ 未知"
+}
 
 class TrafficPlugin(BasePlugin):
     """流量管理插件"""
@@ -392,25 +409,8 @@ class TrafficPlugin(BasePlugin):
                         msg += f"   链接: {message_link}\n"
                     msg += f"   文件大小: {file_size}\n"
                     # 状态和类型中文翻译
-                    status_map = {
-                        "success": "✅ 成功",
-                        "failed": "❌ 失败",
-                        "pending": "⏳ 等待中",
-                        "processing": "🔄 处理中"
-                    }
-                    
-                    media_type_map = {
-                        "photo": "📸 图片",
-                        "video": "🎬 视频",
-                        "document": "📄 文档",
-                        "audio": "🎵 音频",
-                        "voice": "🎤 语音",
-                        "sticker": "😀 贴纸",
-                        "animation": "🎭 动画",
-                        "video_note": "📺 视频消息",
-                        "unknown": "❓ 未知"
-                    }
-                    
+                    status_map = _STATUS_MAP
+                    media_type_map = _MEDIA_TYPE_MAP
                     status_val = record.get('status', '未知')
                     media_type_val = record.get('media_type', '未知')
                     

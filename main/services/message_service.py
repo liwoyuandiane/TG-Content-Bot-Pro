@@ -111,7 +111,7 @@ class MessageService:
                         # 先解析用户 peer（解决 Peer id invalid 问题）
                         try:
                             await userbot.resolve_peer(sender)
-                        except:
+                        except Exception:
                             pass  # 如果解析失败，继续尝试转发
                         
                         # 使用 userbot 的 forward_messages 直接转发消息到用户
@@ -139,7 +139,7 @@ class MessageService:
                 # 先获取消息检查其状态
                 check_msg = await client.get_messages(chat, msg_id)
                 
-                if check_msg.empty:
+                if check_msg is None or check_msg.empty:
                     # 空消息 - 尝试使用 forward_messages 作为回退
                     logger.warning(f"消息 {msg_id} 为空，尝试使用 forward_messages")
                     try:

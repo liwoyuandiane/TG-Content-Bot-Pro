@@ -1,5 +1,4 @@
 """批量转发插件"""
-import time
 import asyncio
 from typing import Dict
 
@@ -138,96 +137,93 @@ class BatchPlugin(BasePlugin):
                 self.batch_users.discard(event.sender_id)
     
     @safe_execute(default_return=False)
-    async def _run_batch(self, userbot: Client, client: Client, sender: int, 
+    async def _run_batch(self, userbot: Client, client: Client, sender: int,
                         link: str, range_count: int, messages_to_delete: list = None):
         """运行批量转发任务"""
         completed = 0
         failed = 0
-        progress_messages = []  # 收集进度消息ID
-        
-        for i in range(range_count):
+        progress_messages = []
+
+        async def process_message(msg_index: int) -> bool:
+            nonlocal completed, failed
+            progress_msg = await client.send_message(sender, "处理中...")
             try:
-                if sender not in self.batch_users:
-                    final_msg = await client.send_message(sender, f"批量任务已完成。\n✅ 成功: {completed}\n❌ 失败: {failed}")
-                    progress_messages.append(final_msg.id)
-                    break
-            except Exception as e:
-                self.logger.error(f"检查批量任务状态时出错: {e}")
-                final_msg = await client.send_message(sender, f"批量任务已完成。\n✅ 成功: {completed}\n❌ 失败: {failed}")
-                progress_messages.append(final_msg.id)
-                break
-            
-            try:
-                # 直接调用message_service，不经过任务队列
-                # 创建一个临时的进度消息来避免edit_id为0的问题
-                progress_msg = await client.send_message(sender, "处理中...")
-                success = await message_service.get_msg(userbot, client, client_manager.bot, sender, progress_msg.id, link, i)
-                # 删除临时进度消息
+                success = await message_service.get_msg(userbot, client, client_manager.bot, sender, progress_msg.id, link, msg_index)
                 try:
                     await progress_msg.delete()
-                except:
+                except Exception:
                     pass
-                
                 if success:
                     completed += 1
                 else:
                     failed += 1
-                
+                return success
             except FloodWait as fw:
-                if fw.value > 299:
-                    final_msg = await client.send_message(sender, f"由于洪水等待超过5分钟，取消批量任务。\n✅ 成功: {completed}\n❌ 失败: {failed}")
-                    progress_messages.append(final_msg.id)
-                    break
-                
-                # 等待FloodWait时间后重试
-                await asyncio.sleep(fw.value)
-                
                 try:
-                    # 创建一个临时的进度消息来避免edit_id为0的问题
-                    progress_msg = await client.send_message(sender, "处理中...")
-                    success = await message_service.get_msg(userbot, client, client_manager.bot, sender, progress_msg.id, link, i)
-                    # 删除临时进度消息
+                    await progress_msg.delete()
+                except Exception:
+                    pass
+                if fw.value > 299:
+                    return False
+                await asyncio.sleep(fw.value)
+                progress_msg2 = await client.send_message(sender, "处理中...")
+                try:
+                    success = await message_service.get_msg(userbot, client, client_manager.bot, sender, progress_msg2.id, link, msg_index)
                     try:
-                        await progress_msg.delete()
-                    except:
+                        await progress_msg2.delete()
+                    except Exception:
                         pass
                     if success:
                         completed += 1
                     else:
                         failed += 1
+                    return success
                 except Exception as retry_error:
+                    try:
+                        await progress_msg2.delete()
+                    except Exception:
+                        pass
                     self.logger.error(f"重试失败: {retry_error}")
                     failed += 1
-            
-            # 每5个文件或最后一批发送进度更新
+                    return False
+            except Exception as e:
+                self.logger.error(f"处理消息失败: {e}")
+                failed += 1
+                return False
+
+        for i in range(range_count):
+            if sender not in self.batch_users:
+                final_msg = await client.send_message(sender, f"批量任务已取消。\n✅ 成功: {completed}\n❌ 失败: {failed}")
+                progress_messages.append(final_msg.id)
+                break
+
+            await process_message(i)
+
             if (i + 1) % 5 == 0 or i == range_count - 1:
                 progress_pct = (completed + failed) * 100 // range_count
                 progress_msg_text = f"📊 进度: {completed + failed}/{range_count} ({progress_pct}%)\n✅ 成功: {completed}\n❌ 失败: {failed}"
-                
+
                 try:
                     progress_msg = await client.send_message(sender, progress_msg_text)
                     progress_messages.append(progress_msg.id)
                 except Exception:
                     pass
-        
+
         final_msg_text = f"🎉 批量任务完成！\n✅ 成功: {completed}\n❌ 失败: {failed}\n📊 总计: {range_count}"
         final_msg = await client.send_message(sender, final_msg_text)
         progress_messages.append(final_msg.id)
-        
-        # 延迟5秒后删除所有过程消息
+
         await asyncio.sleep(5)
-        
+
         try:
-            # 删除用户命令和对话消息
             if messages_to_delete:
                 await client_manager.bot.delete_messages(sender, messages_to_delete)
                 self.logger.info(f"已删除 {len(messages_to_delete)} 条对话消息")
-            
-            # 删除进度和完成消息
+
             if progress_messages:
                 await client.delete_messages(sender, progress_messages)
                 self.logger.info(f"已删除 {len(progress_messages)} 条进度消息")
-                
+
         except Exception as e:
             self.logger.error(f"删除消息时出错: {e}")
 

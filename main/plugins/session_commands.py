@@ -502,7 +502,7 @@ class SessionPlugin(BasePlugin):
                 if 'client' in task.get('data', {}):
                     try:
                         await task['data']['client'].disconnect()
-                    except:
+                    except Exception:
                         pass
                 del self.session_generation_tasks[user_id]
                 
@@ -593,15 +593,26 @@ class SessionPlugin(BasePlugin):
                     
                     # 签入客户端
                     await data['client'].sign_in(data['phone'], data['phone_code_hash'], code)
-                    
+
                     # 登录成功，生成SESSION
                     session_string = await data['client'].export_session_string()
-                    await data['client'].disconnect()
-                    
+
+                    # 确保客户端断开连接
+                    try:
+                        await data['client'].disconnect()
+                    except Exception as disconnect_err:
+                        self.logger.warning(f"断开临时客户端失败: {disconnect_err}")
+
                     # 取消标记用户会话状态
-                    from .message_handler import message_handler_plugin
-                    message_handler_plugin.mark_user_in_conversation(user_id, False)
-                    
+                    message_handler_plugin = None
+                    try:
+                        from ..plugins.message_handler import message_handler_plugin as mhp
+                        message_handler_plugin = mhp
+                    except Exception:
+                        pass
+                    if message_handler_plugin:
+                        message_handler_plugin.mark_user_in_conversation(user_id, False)
+
                     del self.session_generation_tasks[user_id]
                     
                     # 保存SESSION
@@ -654,8 +665,16 @@ class SessionPlugin(BasePlugin):
                         await event.reply("❌ 验证码错误，请重新发送")
                     else:
                         error_msg = f"❌ 验证失败: {err_str}\n\n请使用 /generatesession 重新开始"
-                        await data['client'].disconnect()
+                        try:
+                            await data['client'].disconnect()
+                        except Exception as disconnect_err:
+                            self.logger.warning(f"断开临时客户端失败: {disconnect_err}")
                         del self.session_generation_tasks[user_id]
+                        try:
+                            from ..plugins.message_handler import message_handler_plugin as mhp
+                            mhp.mark_user_in_conversation(user_id, False)
+                        except Exception:
+                            pass
                         await event.reply(error_msg)
                         return
                         
@@ -674,13 +693,15 @@ class SessionPlugin(BasePlugin):
                 
                 # 密码验证成功，继续生成SESSION
                 session_string = await data['client'].export_session_string()
-                
-                await data['client'].disconnect()
-                
-                # 取消标记用户会话状态
-                from .message_handler import message_handler_plugin
-                message_handler_plugin.mark_user_in_conversation(user_id, False)
-                
+
+                try:
+                    await data['client'].disconnect()
+                except Exception as disconnect_err:
+                    self.logger.warning(f"断开临时客户端失败: {disconnect_err}")
+
+                from ..plugins.message_handler import message_handler_plugin as mhp
+                mhp.mark_user_in_conversation(user_id, False)
+
                 del self.session_generation_tasks[user_id]
                 
                 # 更新全局配置中的SESSION
@@ -729,13 +750,16 @@ class SessionPlugin(BasePlugin):
                 if 'client' in task.get('data', {}):
                     try:
                         await task['data']['client'].disconnect()
-                    except:
+                    except Exception:
                         pass
                 del self.session_generation_tasks[user_id]
-                
+
             # 取消标记用户会话状态
-            from .message_handler import message_handler_plugin
-            message_handler_plugin.mark_user_in_conversation(user_id, False)
+            try:
+                from ..plugins.message_handler import message_handler_plugin as mhp
+                mhp.mark_user_in_conversation(user_id, False)
+            except Exception:
+                pass
 
 
 # 创建插件实例并注册

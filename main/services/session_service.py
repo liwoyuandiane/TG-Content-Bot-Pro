@@ -6,6 +6,8 @@ from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 import base64
+import hashlib
+import os
 
 from ..core.database import db_manager
 from ..config import settings
@@ -33,8 +35,8 @@ class SessionService:
                 # 从ENCRYPTION_KEY派生固定盐以增强安全性
                 salt_kdf = PBKDF2HMAC(
                     algorithm=hashes.SHA256(),
-                    length=16,  # 16字节盐
-                    salt=b"fixed_salt_for_session_encryption",  # 固定盐种子
+                    length=16,
+                    salt=hashlib.sha256(key).digest(),
                     iterations=10000,
                 )
                 salt = salt_kdf.derive(key)  # 从密钥派生固定盐
@@ -56,10 +58,6 @@ class SessionService:
         except Exception as e:
             logger.error(f"初始化加密系统失败: {e}")
             self.cipher_suite = None
-    
-    def _generate_encryption_key(self) -> str:
-        """生成新的加密密钥"""
-        return Fernet.generate_key().decode()
     
     def _encrypt_session(self, session_string: str) -> Optional[str]:
         """加密SESSION字符串（无密钥时返回原文）"""

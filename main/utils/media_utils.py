@@ -11,6 +11,10 @@ from ..utils.logging_config import get_logger
 
 logger = get_logger(__name__)
 
+_TELEGRAM_LINK_REGEX = re.compile(
+    r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>«»""'']))"
+)
+
 def hhmmss(seconds: int) -> str:
     """将秒数转换为HH:MM:SS格式"""
     return time.strftime('%H:%M:%S', time.gmtime(seconds))
@@ -44,8 +48,14 @@ async def screenshot(video: str, duration: int, sender: int) -> Optional[str]:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
-        stdout, stderr = await process.communicate()
-        
+        try:
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=60)
+        except asyncio.TimeoutError:
+            process.kill()
+            await process.wait()
+            logger.warning("生成缩略图超时 (60s)")
+            return None
+
         if file_manager.file_exists(out):
             return out
         else:
@@ -120,8 +130,7 @@ def TimeFormatter(milliseconds: int) -> str:
 
 def get_link(string: str) -> Optional[str]:
     """从字符串中提取链接"""
-    regex = r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
-    url = re.findall(regex, string)   
+    url = _TELEGRAM_LINK_REGEX.findall(string)
     try:
         link = [x[0] for x in url][0]
         if link:

@@ -94,7 +94,7 @@ class StartPlugin(BasePlugin):
                 # 尝试发送错误消息，但如果失败则忽略
                 try:
                     await conv.send_message(f"❌ 设置失败: {str(e)}")
-                except:
+                except Exception:
                     pass
     
     async def remove_thumbnail(self, event):

@@ -1,5 +1,6 @@
 """Telegram客户端管理模块"""
 
+import asyncio
 import logging
 from typing import Dict, Any, Optional
 
@@ -92,23 +93,33 @@ class ClientManager:
     
     async def _start_clients(self):
         """启动所有已创建的客户端"""
-        # 启动Telethon bot
-        if self.bot:
-            try:
-                await self.bot.start(bot_token=settings.BOT_TOKEN)
-                logger.info("Telethon bot客户端启动成功")
-            except Exception as e:
-                logger.error(f"Telethon bot启动失败: {e}")
-                self.bot = None
-        
-        # 启动Pyrogram bot
-        if self.pyrogram_bot:
-            try:
-                await self.pyrogram_bot.start()
-                logger.info("Pyrogram bot客户端启动成功")
-            except Exception as e:
-                logger.error(f"Pyrogram bot启动失败: {e}")
-                self.pyrogram_bot = None
+        telethon_result = None
+        pyrogram_result = None
+
+        async def start_telethon():
+            if self.bot:
+                try:
+                    await self.bot.start(bot_token=settings.BOT_TOKEN)
+                    logger.info("Telethon bot客户端启动成功")
+                    return True
+                except Exception as e:
+                    logger.error(f"Telethon bot启动失败: {e}")
+                    self.bot = None
+                    return False
+
+        async def start_pyrogram():
+            if self.pyrogram_bot:
+                try:
+                    await self.pyrogram_bot.start()
+                    logger.info("Pyrogram bot客户端启动成功")
+                    return True
+                except Exception as e:
+                    logger.error(f"Pyrogram bot启动失败: {e}")
+                    self.pyrogram_bot = None
+                    return False
+
+        results = await asyncio.gather(start_telethon(), start_pyrogram(), return_exceptions=True)
+        logger.info(f"客户端启动结果: Telethon={results[0]}, Pyrogram={results[1]}")
     
     async def _initialize_userbot(self):
         """初始化Userbot客户端"""
@@ -233,25 +244,35 @@ class ClientManager:
     
     async def stop_clients(self):
         """停止所有客户端"""
+        STOP_TIMEOUT = 10
+
+        async def stop_with_timeout(client, name, attr):
+            if client is None:
+                return
+            try:
+                await asyncio.wait_for(client.stop() if hasattr(client, 'stop') else client.disconnect(), timeout=STOP_TIMEOUT)
+                logger.info(f"{name}已停止")
+            except asyncio.TimeoutError:
+                logger.warning(f"{name}停止超时，强制断开")
+                try:
+                    getattr(self, attr)
+                except Exception:
+                    pass
+            except Exception as e:
+                logger.error(f"停止{name}时出错: {e}")
+
         try:
             logger.info("正在停止所有客户端...")
-            
-            # 停止顺序：先停止依赖项较少的客户端
-            if self.userbot:
-                await self.userbot.stop()
-                logger.info("Userbot客户端已停止")
-                self.userbot = None
-            
-            if self.pyrogram_bot:
-                await self.pyrogram_bot.stop()
-                logger.info("Pyrogram bot客户端已停止")
-                self.pyrogram_bot = None
-            
-            if self.bot:
-                await self.bot.disconnect()
-                logger.info("Telethon bot客户端已停止")
-                self.bot = None
-            
+
+            await stop_with_timeout(self.userbot, "Userbot客户端", "userbot")
+            self.userbot = None
+
+            await stop_with_timeout(self.pyrogram_bot, "Pyrogram bot客户端", "pyrogram_bot")
+            self.pyrogram_bot = None
+
+            await stop_with_timeout(self.bot, "Telethon bot客户端", "bot")
+            self.bot = None
+
             logger.info("所有客户端已停止")
         except Exception as e:
             logger.error(f"停止客户端时出错: {e}")

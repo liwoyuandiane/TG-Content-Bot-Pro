@@ -214,47 +214,46 @@ class RetryStrategies:
         )
 
 
-def retry_with_backoff(
+async def retry_with_backoff(
     func: Callable,
     *args,
     max_retries: int = 3,
     **kwargs
 ) -> Any:
     """
-    带退避策略的重试函数
-    
+    带退避策略的重试函数（异步版本）
+
     Args:
         func: 要重试的函数
         max_retries: 最大重试次数
         *args: 函数参数
         **kwargs: 函数关键字参数
-    
+
     Returns:
         函数执行结果
-    
+
     Raises:
         最后一次重试的异常
     """
     strategy = RetryStrategy(max_retries=max_retries)
-    
+
     for attempt in range(strategy.max_retries + 1):
         try:
             if asyncio.iscoroutinefunction(func):
-                return asyncio.run(func(*args, **kwargs))
+                return await func(*args, **kwargs)
             else:
                 return func(*args, **kwargs)
-        
+
         except Exception as e:
             if attempt == strategy.max_retries:
                 logger.error(f"函数 {func.__name__} 重试 {attempt} 次后失败")
                 raise
-            
+
             delay = strategy.get_delay(attempt + 1)
             logger.warning(f"函数 {func.__name__} 第 {attempt + 1} 次重试，等待 {delay:.2f} 秒")
-            
+
             if asyncio.iscoroutinefunction(func):
-                import time
-                time.sleep(delay)
+                await asyncio.sleep(delay)
             else:
                 import time
                 time.sleep(delay)

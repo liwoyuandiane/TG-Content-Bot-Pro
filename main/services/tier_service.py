@@ -2,29 +2,30 @@
 import logging
 from ..core.database import db_manager
 from ..config import settings
+from .permission_service import permission_service
 
 logger = logging.getLogger(__name__)
 
 
 class TierService:
     """用户等级服务
-    
+
     负责管理用户等级和批量处理限制。
     """
-    
+
     def __init__(self):
         self.db = db_manager
-    
+
     def is_super_admin(self, user_id: int) -> bool:
         """检查用户是否为超级管理员（AUTH用户）
-        
+
         Args:
             user_id: 用户ID
-            
+
         Returns:
             bool: 用户是否为超级管理员
         """
-        return user_id in settings.get_auth_users()
+        return permission_service.is_owner(user_id)
     
     async def is_premium_user(self, user_id: int) -> bool:
         """检查用户是否为Premium
