@@ -1,6 +1,7 @@
 """Telegram客户端管理模块"""
 import logging
 import os
+import sqlite3
 from typing import Dict, Any, Optional
 
 from pyrogram import Client as PyrogramClient
@@ -33,9 +34,56 @@ class ClientManager:
     
     async def _initialize_all_clients(self):
         """初始化并启动所有客户端"""
+        await self._load_bot_session_from_db()
         self._create_pyrogram_bot()
         await self._start_pyrogram_bot()
+        await self._save_bot_session_to_db()
         await self._initialize_userbot()
+    
+    async def _load_bot_session_from_db(self):
+        """从数据库加载 BotClient.session"""
+        try:
+            from ..core.database import db_manager
+            
+            # 确保数据库已连接
+            db_manager._ensure_connection()
+            if db_manager.db is None:
+                logger.info("数据库未连接，跳过加载 BotClient.session")
+                return
+            
+            logger.info(f"尝试从数据库加载 BotClient.session，API_ID={settings.API_ID}")
+            bot_session = await db_manager.get_bot_session(settings.API_ID)
+            if bot_session:
+                session_dir = os.environ.get("SESSION_DIR", "/app/sessions")
+                os.makedirs(session_dir, exist_ok=True)
+                session_path = os.path.join(session_dir, "BotClient.session")
+                
+                with open(session_path, 'wb') as f:
+                    f.write(bot_session)
+                logger.info(f"从数据库加载 BotClient.session 成功，大小: {len(bot_session)} 字节")
+            else:
+                logger.info("数据库中无 BotClient.session")
+        except Exception as e:
+            logger.warning(f"从数据库加载 BotClient.session 失败: {e}")
+    
+    async def _save_bot_session_to_db(self):
+        """保存 BotClient.session 到数据库"""
+        try:
+            if not self.bot or not self.bot.is_connected:
+                return
+            
+            session_dir = os.environ.get("SESSION_DIR", "/app/sessions")
+            session_path = os.path.join(session_dir, "BotClient.session")
+            
+            if os.path.exists(session_path):
+                with open(session_path, 'rb') as f:
+                    session_data = f.read()
+                
+                from ..core.database import db_manager
+                await db_manager.save_bot_session(settings.API_ID, session_data)
+                logger.info(f"BotClient.session 已保存到数据库，大小: {len(session_data)} 字节")
+        except Exception as e:
+            logger.warning(f"保存 BotClient.session 到数据库失败: {e}")
     
     def _create_pyrogram_bot(self):
         """创建Pyrogram bot客户端实例"""
@@ -110,13 +158,9 @@ class ClientManager:
         masked_session = security_manager.mask_sensitive_data(corrected_session, 15)
         logger.info(f"正在启动Userbot客户端 (Session: {masked_session})")
         
-        # 使用持久化的session文件路径
-        session_dir = os.environ.get("SESSION_DIR", "/app/sessions")
-        os.makedirs(session_dir, exist_ok=True)
-        session_path = os.path.join(session_dir, "Userbot")
-        
+        # 使用内存session（不持久化）
         userbot = PyrogramClient(
-            session_path,
+            "Userbot",
             session_string=corrected_session,
             api_hash=settings.API_HASH,
             api_id=settings.API_ID,
@@ -124,7 +168,8 @@ class ClientManager:
             device_model="Session Generator",
             system_version="Linux 5.4",
             lang_code="en",
-            sleep_threshold=60
+            sleep_threshold=60,
+            in_memory=True
         )
         
         try:

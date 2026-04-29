@@ -900,5 +900,41 @@ class DatabaseManager:
             logger.error(f"清除转发历史记录失败: {e}")
             return False
 
+    async def get_bot_session(self, api_id: int) -> Optional[bytes]:
+        """从数据库获取 BotClient.session"""
+        if self.db is None:
+            return None
+
+        try:
+            self._ensure_connection()
+            result = self.db.bot_sessions.find_one({"api_id": api_id})
+            if result and "session_data" in result:
+                return result["session_data"]
+            return None
+        except Exception as e:
+            logger.error(f"获取 BotClient.session 失败: {e}")
+            return None
+
+    async def save_bot_session(self, api_id: int, session_data: bytes) -> bool:
+        """保存 BotClient.session 到数据库"""
+        if self.db is None:
+            return False
+
+        try:
+            self._ensure_connection()
+            self.db.bot_sessions.update_one(
+                {"api_id": api_id},
+                {"$set": {
+                    "session_data": session_data,
+                    "updated_at": datetime.now()
+                }},
+                upsert=True
+            )
+            logger.info(f"BotClient.session 已保存到数据库")
+            return True
+        except Exception as e:
+            logger.error(f"保存 BotClient.session 失败: {e}")
+            return False
+
 
 db_manager = DatabaseManager()
