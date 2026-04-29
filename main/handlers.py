@@ -56,12 +56,59 @@ def register_all_handlers(bot: Client):
             "• 发送消息链接转发内容\n"
             "• /start - 开始使用\n"
             "• /help - 显示帮助\n"
+            "• /plan - 账户信息\n"
+            "• /batch - 批量保存\n"
+            "• /cancel - 取消任务\n"
             "• /generatesession - 生成 SESSION\n"
             "• /mysession - 查看 SESSION\n"
             "• /history - 转发历史\n"
             "• /clearhistory - 清除历史\n"
             "• /sessions - 所有SESSION (仅管理员)"
         )
+    
+    @bot.on_message(filters.command("plan"))
+    async def plan_command(client, message):
+        user_id = message.from_user.id
+        
+        if not await permission_service.require_authorized(user_id):
+            return
+        
+        user = await user_service.get_user(user_id)
+        if not user:
+            await message.reply("❌ 用户不存在，请发送 /start")
+            return
+        
+        plan_name = user.get("plan", "free")
+        expires = user.get("plan_expires", "无")
+        
+        text = f"👑 **账户信息**\n\n"
+        text += f"• 用户ID: `{user_id}`\n"
+        text += f"• 当前套餐: **{plan_name}**\n"
+        if expires != "无":
+            text += f"• 过期时间: {expires}\n"
+        text += f"\n发送消息链接开始转发"
+        
+        await message.reply(text)
+    
+    @bot.on_message(filters.command("batch"))
+    async def batch_command(client, message):
+        user_id = message.from_user.id
+        
+        if not await permission_service.require_authorized(user_id):
+            return
+        
+        await message.reply("📦 **批量保存模式**\n\n请发送多条 Telegram 链接（每行一条），我会依次转发")
+        user_states[user_id] = {"state": "batch_mode", "links": []}
+    
+    @bot.on_message(filters.command("cancel"))
+    async def cancel_command(client, message):
+        user_id = message.from_user.id
+        
+        if user_id in user_states:
+            user_states.pop(user_id, None)
+            await message.reply("✅ 已取消当前任务")
+        else:
+            await message.reply("❌ 没有正在进行的任务")
     
     @bot.on_message(filters.command("history"))
     async def history_command(client, message):
@@ -131,7 +178,7 @@ def register_all_handlers(bot: Client):
             else:
                 await message.reply("❌ SESSION 格式无效")
         else:
-            await message.reply("用法: /addsession <session_string>")
+            await message.reply("用法: /addsession <session_string>\n\n示例: /addsession BgA...")
     
     @bot.on_message(filters.command("delsession"))
     async def del_session_command(client, message):
@@ -168,7 +215,7 @@ def register_all_handlers(bot: Client):
         
         parts = message.text.split()
         if len(parts) < 2:
-            await message.reply("用法: /authorize <user_id>")
+            await message.reply("用法: /authorize 123456789")
             return
         
         try:
@@ -188,7 +235,7 @@ def register_all_handlers(bot: Client):
         
         parts = message.text.split()
         if len(parts) < 2:
-            await message.reply("用法: /unauthorize <user_id>")
+            await message.reply("用法: /unauthorize 123456789")
             return
         
         try:
@@ -227,7 +274,7 @@ def register_all_handlers(bot: Client):
         
         parts = message.text.split()
         if len(parts) < 2:
-            await message.reply("用法: /upgrade <user_id>")
+            await message.reply("用法: /upgrade 123456789")
             return
         
         try:
@@ -247,7 +294,7 @@ def register_all_handlers(bot: Client):
         
         parts = message.text.split()
         if len(parts) < 2:
-            await message.reply("用法: /downgrade <user_id>")
+            await message.reply("用法: /downgrade 123456789")
             return
         
         try:

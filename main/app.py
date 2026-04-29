@@ -239,27 +239,27 @@ async def setup_commands():
         BotCommand("cancel", "❌ 取消当前任务"),
         
         # 管理员命令 - 用户管理
-        BotCommand("authorize", "🔓 添加授权用户\n用法: /authorize <user_id>"),
-        BotCommand("unauthorize", "🔒 移除授权用户\n用法: /unauthorize <user_id>"),
-        BotCommand("authorized", "📋 查看授权列表"),
+        BotCommand("authorize", "🔓 授权用户\n用法: /authorize 123456789"),
+        BotCommand("unauthorize", "🔒 移除授权\n用法: /unauthorize 123456789"),
+        BotCommand("authorized", "📋 授权列表"),
         
         # 管理员命令 - 等级管理
-        BotCommand("upgrade", "⬆️ 升级为Premium\n用法: /upgrade <user_id>"),
-        BotCommand("downgrade", "⬇️ 降级为普通用户\n用法: /downgrade <user_id>"),
+        BotCommand("upgrade", "⬆️ 升级Premium\n用法: /upgrade 123456789"),
+        BotCommand("downgrade", "⬇️ 降级普通\n用法: /downgrade 123456789"),
         
         # 管理员命令 - 数据管理
-        BotCommand("history", "📜 查看转发历史"),
-        BotCommand("clearhistory", "🗑️ 清除转发历史"),
+        BotCommand("history", "📜 转发历史"),
+        BotCommand("clearhistory", "🗑️ 清除历史"),
         
         # 管理员命令 - SESSION管理
-        BotCommand("sessions", "📋 查看所有SESSION"),
-        BotCommand("addsession", "➕ 添加SESSION"),
-        BotCommand("generatesession", "🔐 在线生成SESSION"),
-        BotCommand("delsession", "🗑️ 删除SESSION\n用法: /delsession <me|user_id>"),
-        BotCommand("mysession", "🔐 查看我的SESSION"),
+        BotCommand("sessions", "📋 所有SESSION"),
+        BotCommand("addsession", "➕ 添加SESSION\n用法: /addsession <session>"),
+        BotCommand("generatesession", "🔐 生成SESSION"),
+        BotCommand("delsession", "🗑️ 删除SESSION\n用法: /delsession me"),
+        BotCommand("mysession", "🔐 我的SESSION"),
         
         # 管理员命令 - 队列
-        BotCommand("queue", "📋 查看队列状态"),
+        BotCommand("queue", "📋 队列状态"),
     ]
     
     try:
