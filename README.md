@@ -29,6 +29,7 @@ docker run -d --name tg-content-bot-pro \
   -e BOT_TOKEN=your_bot_token \
   -e AUTH=your_user_id \
   -e MONGO_DB=your_mongodb_url \
+  -e FORCESUB=your_channel \
   -e ENCRYPTION_KEY=your_key \
   -p 28089:28089 \
   ghcr.io/liwoyuandiane/tg-content-bot-pro:latest
