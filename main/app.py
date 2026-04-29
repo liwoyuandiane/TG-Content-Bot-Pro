@@ -13,13 +13,17 @@ from pyrogram.types import BotCommand
 
 from .core.clients import client_manager
 from .core.database import db_manager
-from .core.plugin_manager import plugin_manager
+# plugin_manager 已移除
 from .utils.logging_config import setup_logging, get_logger
 from .config import settings
 
 # 设置日志
 setup_logging()
 logger = get_logger(__name__)
+
+# 全局抑制 Pyrogram 内部错误
+import asyncio
+asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
 
 # 单实例锁文件
 LOCK_FILE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".app.lock")
@@ -28,6 +32,40 @@ lock_file = None
 # 健康检查服务器实例
 _health_server = None
 _health_thread = None
+
+
+def check_and_cleanup_session():
+    """检查 API_ID 是否变化，如果变化则删除 session 文件"""
+    session_dir = os.environ.get("SESSION_DIR", "/app/sessions")
+    api_id_file = os.path.join(session_dir, ".api_id")
+    current_api_id = str(settings.API_ID)
+    
+    # 如果目录不存在，创建它
+    os.makedirs(session_dir, exist_ok=True)
+    
+    # 检查之前记录的 API_ID
+    if os.path.exists(api_id_file):
+        with open(api_id_file, 'r') as f:
+            saved_api_id = f.read().strip()
+        
+        if saved_api_id != current_api_id:
+            logger.warning(f"检测到 API_ID 变化: {saved_api_id} -> {current_api_id}")
+            logger.warning("正在清理旧的 session 文件...")
+            
+            # 删除所有 session 文件
+            for file in os.listdir(session_dir):
+                if file.endswith('.session'):
+                    file_path = os.path.join(session_dir, file)
+                    os.remove(file_path)
+                    logger.info(f"已删除: {file_path}")
+    
+    # 保存当前 API_ID
+    with open(api_id_file, 'w') as f:
+        f.write(current_api_id)
+
+
+# 启动时检查 session
+check_and_cleanup_session()
 
 
 # 健康检查处理器
@@ -225,32 +263,13 @@ async def setup_commands():
     ]
     
     try:
-        await client_manager.pyrogram_bot.set_bot_commands(commands)
+        await client_manager.bot.set_bot_commands(commands)
         logger.info("机器人命令已自动设置完成！")
     except Exception as e:
         logger.error(f"设置命令时出错: {e}", exc_info=True)
 
 
-async def load_all_plugins():
-    """加载所有插件"""
-    try:
-        from .core.base_plugin import plugin_registry
-        
-        results = plugin_manager.load_all_plugins()
-        loaded_count = sum(1 for success in results.values() if success)
-        total_count = len(results)
-        logger.info(f"插件加载完成: {loaded_count}/{total_count} 个插件加载成功")
-        
-        # 记录加载失败的插件
-        failed_plugins = [name for name, success in results.items() if not success]
-        if failed_plugins:
-            logger.warning(f"以下插件加载失败: {', '.join(failed_plugins)}")
-        
-        # 调用所有插件的on_load()方法来注册事件处理器
-        await plugin_registry.load_all_plugins()
-        logger.info(f"插件事件处理器已注册")
-    except Exception as e:
-        logger.error(f"加载插件时出错: {e}", exc_info=True)
+# 不再加载插件系统
 
 
 async def startup():
@@ -274,32 +293,27 @@ async def startup():
     # 初始化客户端
     try:
         await client_manager.initialize_clients()
-        logger.info(f"客户端初始化成功，bot实例: {client_manager.bot}")
+        logger.info(f"客户端初始化成功")
     except Exception as e:
         logger.error(f"客户端初始化失败: {e}", exc_info=True)
         logger.warning("将继续启动应用，但部分功能可能不可用")
     
-    # 加载插件
-    await load_all_plugins()
-    
-    # 检查事件处理器
+    # 注册 Pyrogram 消息处理器
     if client_manager.bot:
-        handlers = list(client_manager.bot.list_event_handlers())
-        logger.info(f"✅ Telethon注册的事件处理器数量: {len(handlers)}")
-        for i, (handler, event) in enumerate(handlers):
-            logger.info(f"  {i+1}. {handler.__name__}")
+        from .handlers import register_all_handlers
+        register_all_handlers(client_manager.bot)
+        logger.info("✅ Pyrogram 消息处理器已注册")
     else:
         logger.error("❌ Bot客户端未初始化！")
     
-    # 设置机器人命令（确保客户端已启动）
+    # 设置机器人命令
     try:
-        if client_manager.pyrogram_bot and client_manager.pyrogram_bot.is_connected:
+        if client_manager.bot and client_manager.bot.is_connected:
             await setup_commands()
         else:
             logger.warning("Pyrogram客户端未连接，跳过命令设置")
     except Exception as e:
         logger.error(f"设置机器人命令失败: {e}", exc_info=True)
-        logger.warning("机器人命令设置失败，但应用将继续运行")
     
     logger.info("✅ 部署成功！")
     logger.info("📱 TG消息提取器已启动")
@@ -343,10 +357,15 @@ async def main_async():
             return
         
         # 检查客户端是否已初始化
-        if client_manager.bot is not None and hasattr(client_manager.bot, 'is_connected') and client_manager.bot.is_connected():
+        if client_manager.bot is not None and hasattr(client_manager.bot, 'is_connected') and client_manager.bot.is_connected:
             logger.info("🚀 机器人开始监听消息...")
-            # 运行主客户端直到断开连接
-            await client_manager.bot.run_until_disconnected()
+            
+            # Pyrogram: 保持客户端运行
+            try:
+                while True:
+                    await asyncio.sleep(3600)  # 每小时检查一次
+            except asyncio.CancelledError:
+                logger.info("收到停止信号")
         else:
             logger.warning("⚠️ 客户端未初始化或未连接，机器人将以降级模式运行...")
             logger.info(f"📡 健康检查服务器已启动，可以访问 http://localhost:{settings.HEALTH_CHECK_PORT}/health 检查服务状态")

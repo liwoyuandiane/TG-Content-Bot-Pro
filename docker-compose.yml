@@ -38,9 +38,10 @@ services:
     ports:
       - "${HEALTH_CHECK_PORT:-28089}:${HEALTH_CHECK_PORT:-28089}"
     
-    # 卷挂载 - 用于日志持久化
+    # 卷挂载 - 持久化到运行目录
     volumes:
-      - ./logs:/app/logs
+      - ${PWD}/logs:/app/logs
+      - ${PWD}/sessions:/app/sessions
     
     # 日志配置
     logging:

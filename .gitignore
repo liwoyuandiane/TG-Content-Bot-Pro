@@ -128,3 +128,4 @@ test_bot_commands.py
 *.flv
 *.mkv
 AGENTS.md
+sessions/

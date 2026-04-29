@@ -191,7 +191,6 @@ def _optimize_third_party_logging():
     # 减少第三方库的日志噪音
     noisy_modules = [
         ("pyrogram", logging.WARNING),
-        ("telethon", logging.WARNING),
         ("pymongo", logging.WARNING),
         ("urllib3", logging.WARNING),
         ("httpx", logging.WARNING),
