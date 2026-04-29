@@ -108,7 +108,6 @@ tmp/
 .app.lock
 
 # Project specific
-AGENTS.md
 
 # Test scripts (not part of the project)
 test_bot_commands.py
@@ -127,5 +126,4 @@ test_bot_commands.py
 *.wmv
 *.flv
 *.mkv
-AGENTS.md
 sessions/
