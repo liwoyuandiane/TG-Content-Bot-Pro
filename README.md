@@ -9,39 +9,54 @@ Telegram 受限内容保存机器人，支持从公开和私密频道获取消�
 ## 🔧 功能特性
 
 - 支持公开和私密频道消息获取
+- 智能获取：先尝试 bot 直接获取，失败再用 userbot
 - 批量处理（最多10条）
 - 流量监控和限制
 - 用户授权管理
 - Premium 用户支持
-- Docker 支持
+- Docker 支持，Session 持久化
 
 ---
 
 ## 🚀 部署方式
 
-### Docker 运行容器（推荐）
+### Docker Run（推荐 - 使用 GitHub Actions 自动构建的镜像）
 
 ```bash
-docker run -d \
-  --name tg-content-bot-pro \
+docker run -d --name tg-content-bot-pro \
   -e API_ID=your_api_id \
   -e API_HASH=your_api_hash \
-  -e BOT_TOKEN=your_token \
+  -e BOT_TOKEN=your_bot_token \
   -e AUTH=your_user_id \
-  -e MONGO_DB=your_mongo_url \
+  -e MONGO_DB=your_mongodb_url \
   -e ENCRYPTION_KEY=your_key \
+  -v $(pwd)/logs:/app/logs \
+  -v $(pwd)/sessions:/app/sessions \
   -p 28089:28089 \
   ghcr.io/liwoyuandiane/tg-content-bot-pro:latest
 ```
 
-### Docker Compose
+或使用 `.env` 文件：
+
+```bash
+docker run -d --name tg-content-bot-pro \
+  --env-file .env \
+  -v $(pwd)/logs:/app/logs \
+  -v $(pwd)/sessions:/app/sessions \
+  -p 28089:28089 \
+  ghcr.io/liwoyuandiane/tg-content-bot-pro:latest
+```
+
+**镜像地址：** `ghcr.io/liwoyuandiane/tg-content-bot-pro:latest`（GitHub Actions 自动构建）
+
+### Docker Compose（本地构建）
 
 ```bash
 git clone https://github.com/liwoyuandiane/TG-Content-Bot-Pro.git
 cd TG-Content-Bot-Pro
 cp .env.example .env
-nano .env
-docker-compose up -d
+nano .env  # 编辑配置
+docker-compose up -d --build
 ```
 
 ### VPS / 本地
@@ -143,7 +158,7 @@ mongodb+srv://<username>:<password>@cluster.mongodb.net/tgbot?retryWrites=true&w
 - 使用 `/generatesession` 命令生成 SESSION
 - 或在 `.env` 中配置 `SESSION` 环境变量
 
-### 3. FloodWaitError（限流）
+### 4. FloodWaitError（限流）
 **问题**：`A wait of X seconds is required`
 
 **原因**：Telegram API 限流，通常由频繁重启或多次连接失败引起
@@ -153,7 +168,7 @@ mongodb+srv://<username>:<password>@cluster.mongodb.net/tgbot?retryWrites=true&w
 - 等待期间**不要重启容器**，否则会延长等待时间
 - 等待结束后自动恢复
 
-### 4. MongoDB 连接失败
+### 5. MongoDB 连接失败
 **问题**：`数据库连接失败` 或 `保存失败`
 
 **原因**：
@@ -166,7 +181,7 @@ mongodb+srv://<username>:<password>@cluster.mongodb.net/tgbot?retryWrites=true&w
 - 在 MongoDB Atlas 中添加服务器 IP 到白名单（IP Access List）
 - 确保 MongoDB Atlas 集群状态正常
 
-### 5. SESSION 保存失败
+### 6. SESSION 保存失败
 **问题**：`SESSION 保存失败，请稍后重试`
 
 **原因**：
@@ -178,7 +193,7 @@ mongodb+srv://<username>:<password>@cluster.mongodb.net/tgbot?retryWrites=true&w
 - 检查 Atlas 白名单设置
 - 等待一段时间后重试
 
-### 6. Bot 无法访问群组消息
+### 7. Bot 无法访问群组消息
 **问题**：公开群组消息转发失败
 
 **原因**：
@@ -189,7 +204,7 @@ mongodb+srv://<username>:<password>@cluster.mongodb.net/tgbot?retryWrites=true&w
 - 将 Bot 添加为群组管理员或成员
 - 或配置 SESSION（用户账号）来访问群组
 
-### 7. 单实例运行错误
+### 8. 单实例运行错误
 **问题**：`检测到另一个实例正在运行`
 
 **原因**：已有 Bot 实例在运行
@@ -200,8 +215,24 @@ mongodb+srv://<username>:<password>@cluster.mongodb.net/tgbot?retryWrites=true&w
 docker stop tg-content-bot-pro
 docker rm tg-content-bot-pro
 # 重新启动
-docker-compose up -d
+docker run -d --name tg-content-bot-pro \
+  --env-file .env \
+  -v $(pwd)/logs:/app/logs \
+  -v $(pwd)/sessions:/app/sessions \
+  -p 28089:28089 \
+  ghcr.io/liwoyuandiane/tg-content-bot-pro:latest
 ```
+
+### 9. MEDIA_EMPTY 错误
+**问题**：`The media you tried to send is invalid`
+
+**原因**：
+- userbot 获取的 file_id 和 bot 不兼容
+- 消息内容可能已被删除或受限
+
+**解决方案**：
+- 该消息无法转发，属于 Telegram 限制
+- 尝试其他消息链接
 
 ---
 
