@@ -24,14 +24,17 @@ def register_all_handlers(bot: Client):
         user_id = message.from_user.id
         
         if not await user_service.is_user_authorized(user_id):
+            await message.reply("❌ 您没有权限使用此机器人")
             return
         
         user = message.from_user
+        is_auth = await user_service.is_user_authorized(user_id)
         await user_service.add_user(
             user_id=user_id,
             username=user.username,
             first_name=user.first_name,
-            last_name=user.last_name
+            last_name=user.last_name,
+            is_authorized=is_auth
         )
         
         if await user_service.is_user_banned(user_id):
@@ -328,7 +331,7 @@ def register_all_handlers(bot: Client):
             return
         
         user_states[user_id] = {"state": "waiting_phone", "phone": None}
-        await message.reply("请发送您的手机号码（格式：+8613800138000 或 +16828004917）")
+        await message.reply("📱 请发送您的手机号码（如 +8613800138000）")
     
     def parse_phone_number(text: str) -> str:
         """解析并标准化手机号格式"""
@@ -392,20 +395,49 @@ def register_all_handlers(bot: Client):
         if user_id in user_states and user_states[user_id].get("state") == "waiting_phone":
             phone = parse_phone_number(text)
             if not phone:
-                await message.reply("❌ 手机号格式无效，请重新发送（格式：+8613800138000 或 +16828004917）")
+                await message.reply("❌ 手机号格式无效，请重新发送（如 +8613800138000）")
                 return
             
-            await message.reply(f"📱 正在验证手机号: {phone}\n请稍候...")
+            await message.reply("📱 正在发送验证码...\n请稍候...")
             
-            # TODO: 这里应该调用 Pyrogram 的 phone 登录流程
-            # 目前先提示用户使用 /addsession 命令
+            # 发送验证码
+            from .services.session_generator import generate_session_by_phone
+            success, result = await generate_session_by_phone(phone)
+            
+            if success:
+                user_states[user_id] = {"state": "waiting_code", "phone": phone}
+                await message.reply(f"✅ 验证码已发送！\n\n{result}")
+            else:
+                user_states.pop(user_id, None)
+                await message.reply(f"❌ 发送失败: {result}")
+            return
+        
+        # 处理用户状态（等待输入验证码）
+        if user_id in user_states and user_states[user_id].get("state") == "waiting_code":
+            state = user_states[user_id]
+            phone = state.get("phone")
+            code = text.strip()
+            
+            if not phone:
+                user_states.pop(user_id, None)
+                await message.reply("❌ 会话已过期，请重新发送 /generatesession")
+                return
+            
+            await message.reply("🔐 正在验证验证码...")
+            
+            from .services.session_generator import verify_phone_code
+            success, result = await verify_phone_code(phone, code)
+            
             user_states.pop(user_id, None)
-            await message.reply(
-                f"✅ 手机号已收到: {phone}\n\n"
-                "⚠️ 自动登录功能暂未实现，请使用以下方式之一：\n"
-                "1. 使用 /addsession <session_string> 命令添加 SESSION\n"
-                "2. 使用在线工具生成 SESSION：https://replit.com/@levinaldas/Pyrogram-Session-Generator"
-            )
+            
+            if success:
+                await session_service.save_session(user_id, result)
+                await message.reply(
+                    "✅ SESSION 生成成功！\n\n"
+                    "您的 Userbot 已自动启动，可以转发私密频道消息了"
+                )
+            else:
+                await message.reply(f"❌ 验证失败: {result}\n请重新发送 /generatesession 重试")
             return
         
         # 权限检查

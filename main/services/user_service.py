@@ -20,7 +20,16 @@ class UserService:
     
     async def get_user(self, user_id: int) -> Optional[Dict[str, Any]]:
         """获取用户信息"""
-        return await self.db.get_user(user_id)
+        user = await self.db.get_user(user_id)
+        if not user and user_id in settings.get_auth_users():
+            user = {
+                "user_id": user_id,
+                "plan": "premium",
+                "is_authorized": True,
+                "is_premium": True,
+                "plan_expires": None
+            }
+        return user
     
     async def is_user_banned(self, user_id: int) -> bool:
         """检查用户是否被封禁"""

@@ -163,6 +163,7 @@ class DatabaseManager:
         try:
             self._ensure_connection()
             now = datetime.now()
+            plan = "premium" if is_authorized else "free"
             self.db.users.update_one(
                 {"user_id": user_id},
                 {
@@ -170,13 +171,15 @@ class DatabaseManager:
                         "username": username,
                         "first_name": first_name,
                         "last_name": last_name,
-                        "last_used": now
+                        "last_used": now,
+                        "plan": plan,
+                        "plan_expires": None
                     },
                     "$setOnInsert": {
                         "join_date": now,
                         "is_banned": False,
                         "is_authorized": is_authorized,
-                        "is_premium": False,
+                        "is_premium": is_authorized,
                         "total_forwards": 0,
                         "total_size": 0,
                         "last_forward": None,
@@ -350,7 +353,7 @@ class DatabaseManager:
             self._ensure_connection()
             result = self.db.users.update_one(
                 {"user_id": user_id},
-                {"$set": {"is_authorized": True}}
+                {"$set": {"is_authorized": True, "plan": "premium"}}
             )
             return result.modified_count > 0
         except Exception as e:
