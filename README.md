@@ -141,11 +141,12 @@ mongodb+srv://<username>:<password>@cluster.mongodb.net/tgbot?retryWrites=true&w
 
 **原因**：
 - Telegram 限制：Bot 无法直接访问公开群组的消息
-- Bot 需要被添加为群组成员才能访问
+- 需要 userbot（用户账号）才能访问群组
 
 **解决方案**：
-- 将机器人添加到该群组中，成为成员后再试转发
-- 或配置 SESSION（用户账号）来访问群组
+- 配置 SESSION（用户账号），让 userbot 访问群组
+- 使用 `/generatesession` 命令生成 SESSION
+- 或将机器人添加到该群组中，成为成员
 
 ### 3. 私有频道消息无法转发
 **问题**：转发私有频道（如 t.me/c/xxx/yyy）消息失败
@@ -226,8 +227,6 @@ docker rm tg-content-bot-pro
 # 重新启动
 docker run -d --name tg-content-bot-pro \
   --env-file .env \
-  -v $(pwd)/logs:/app/logs \
-  -v $(pwd)/sessions:/app/sessions \
   -p 28089:28089 \
   ghcr.io/liwoyuandiane/tg-content-bot-pro:latest
 ```
