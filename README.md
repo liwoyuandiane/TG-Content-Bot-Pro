@@ -137,14 +137,26 @@ mongodb+srv://<username>:<password>@cluster.mongodb.net/tgbot?retryWrites=true&w
 - 如果是群组消息，需要添加 Bot 到群组，或配置 SESSION
 
 ### 2. 公开群组消息无法转发
-**问题**：转发公开群组（如 @starlink_2077）消息失败
+**问题**：转发公开群组（如 @starlink_2077、@freeyule）消息失败
 
 **原因**：
 - Telegram 限制：Bot 无法直接访问公开群组的消息
-- 用户账号可以访问，但获取的 file_id 不能给机器人用
+- Bot 需要被添加为群组成员才能访问
 
 **解决方案**：
 - 将机器人添加到该群组中，成为成员后再试转发
+- 或配置 SESSION（用户账号）来访问群组
+
+### 3. 私有频道消息无法转发
+**问题**：转发私有频道（如 t.me/c/xxx/yyy）消息失败
+
+**原因**：
+- Bot 无法访问私有频道
+- 需要 userbot（用户账号）才能访问
+
+**解决方案**：
+- 配置 SESSION（用户账号）
+- 使用 `/generatesession` 命令生成 SESSION
 
 ### 3. 未配置 SESSION
 **问题**：`未配置 SESSION，无法访问受限内容`

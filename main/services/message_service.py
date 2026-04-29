@@ -51,6 +51,8 @@ async def forward_message(userbot: Client, bot: Client, user_id: int, msg_link: 
                 msg = None
         
         if not msg or getattr(msg, 'empty', False):
+            if not userbot or not userbot.is_connected:
+                return False, "❌ 无法访问该频道，请配置 SESSION 或将机器人添加到频道"
             return False, "❌ 消息为空或不存在"
         
         # 用 bot 发送
