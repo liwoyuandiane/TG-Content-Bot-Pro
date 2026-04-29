@@ -335,7 +335,7 @@ def register_all_handlers(bot: Client):
     
     def parse_phone_number(text: str) -> str:
         """解析并标准化手机号格式"""
-        # 移除所有空格、括号、横杠
+        # 移除所有空格、括号、横杠（支持 +1(682) 800-4917 或 +1 682 800 4917 等格式）
         cleaned = re.sub(r'[\s\(\)\-\+]', '', text)
         
         # 如果以 00 开头，替换为 +
@@ -416,7 +416,8 @@ def register_all_handlers(bot: Client):
         if user_id in user_states and user_states[user_id].get("state") == "waiting_code":
             state = user_states[user_id]
             phone = state.get("phone")
-            code = text.strip()
+            # 移除所有空格（支持 8 7 3 7 6 格式）
+            code = text.strip().replace(" ", "")
             
             if not phone:
                 user_states.pop(user_id, None)
