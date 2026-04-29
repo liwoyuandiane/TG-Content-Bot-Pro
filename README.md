@@ -14,7 +14,7 @@ Telegram 受限内容保存机器人，支持从公开和私密频道获取消�
 - 流量监控和限制
 - 用户授权管理
 - Premium 用户支持
-- Docker 支持，Session 持久化
+- Docker 支持，Session 持久化到数据库
 
 ---
 
