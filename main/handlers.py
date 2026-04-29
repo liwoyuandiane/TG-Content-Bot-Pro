@@ -154,6 +154,105 @@ def register_all_handlers(bot: Client):
         success = await session_service.delete_session(target)
         await message.reply("✅ 已删除" if success else "❌ 删除失败")
     
+    @bot.on_message(filters.command("authorize"))
+    async def authorize_command(client, message):
+        user_id = message.from_user.id
+        
+        if not await permission_service.require_owner(user_id):
+            await message.reply("❌ 仅管理员可用")
+            return
+        
+        parts = message.text.split()
+        if len(parts) < 2:
+            await message.reply("用法: /authorize <user_id>")
+            return
+        
+        try:
+            target_id = int(parts[1])
+            success = await user_service.authorize_user(target_id)
+            await message.reply(f"✅ 已授权用户 {target_id}" if success else "❌ 授权失败")
+        except ValueError:
+            await message.reply("❌ 无效的用户 ID")
+    
+    @bot.on_message(filters.command("unauthorize"))
+    async def unauthorize_command(client, message):
+        user_id = message.from_user.id
+        
+        if not await permission_service.require_owner(user_id):
+            await message.reply("❌ 仅管理员可用")
+            return
+        
+        parts = message.text.split()
+        if len(parts) < 2:
+            await message.reply("用法: /unauthorize <user_id>")
+            return
+        
+        try:
+            target_id = int(parts[1])
+            success = await user_service.unauthorize_user(target_id)
+            await message.reply(f"✅ 已取消授权用户 {target_id}" if success else "❌ 取消授权失败")
+        except ValueError:
+            await message.reply("❌ 无效的用户 ID")
+    
+    @bot.on_message(filters.command("authorized"))
+    async def authorized_command(client, message):
+        user_id = message.from_user.id
+        
+        if not await permission_service.require_owner(user_id):
+            await message.reply("❌ 仅管理员可用")
+            return
+        
+        users = await user_service.get_authorized_users()
+        if not users:
+            await message.reply("📭 暂无授权用户")
+            return
+        
+        msg = "📋 **授权用户列表**\n\n"
+        for i, uid in enumerate(users, 1):
+            msg += f"{i}. `{uid}`\n"
+        
+        await message.reply(msg)
+    
+    @bot.on_message(filters.command("upgrade"))
+    async def upgrade_command(client, message):
+        user_id = message.from_user.id
+        
+        if not await permission_service.require_owner(user_id):
+            await message.reply("❌ 仅管理员可用")
+            return
+        
+        parts = message.text.split()
+        if len(parts) < 2:
+            await message.reply("用法: /upgrade <user_id>")
+            return
+        
+        try:
+            target_id = int(parts[1])
+            success = await user_service.set_user_premium(target_id, True)
+            await message.reply(f"✅ 已升级用户 {target_id} 为 Premium" if success else "❌ 升级失败")
+        except ValueError:
+            await message.reply("❌ 无效的用户 ID")
+    
+    @bot.on_message(filters.command("downgrade"))
+    async def downgrade_command(client, message):
+        user_id = message.from_user.id
+        
+        if not await permission_service.require_owner(user_id):
+            await message.reply("❌ 仅管理员可用")
+            return
+        
+        parts = message.text.split()
+        if len(parts) < 2:
+            await message.reply("用法: /downgrade <user_id>")
+            return
+        
+        try:
+            target_id = int(parts[1])
+            success = await user_service.set_user_premium(target_id, False)
+            await message.reply(f"✅ 已降级用户 {target_id} 为普通用户" if success else "❌ 降级失败")
+        except ValueError:
+            await message.reply("❌ 无效的用户 ID")
+    
     @bot.on_message(filters.command("queue"))
     async def queue_command(client, message):
         user_id = message.from_user.id

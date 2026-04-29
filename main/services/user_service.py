@@ -62,6 +62,10 @@ class UserService:
         """检查用户是否被授权"""
         return await self.db.is_user_authorized(user_id)
     
+    async def set_user_premium(self, user_id: int, is_premium: bool) -> bool:
+        """设置用户 Premium 状态"""
+        return await self.db.set_user_premium(user_id, is_premium)
+    
     async def get_total_forwards(self) -> int:
         """获取总转发数"""
         return await self.db.get_total_forwards()
