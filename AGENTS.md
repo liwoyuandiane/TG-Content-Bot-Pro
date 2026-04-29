@@ -3,23 +3,49 @@
 ## Build & Run
 
 ```bash
-# Docker Compose (推荐 - 自动持久化到当前目录)
-cd /你的运行目录/TG-Content-Bot-Pro
-docker-compose up -d --build
+# Docker Run（推荐 - 使用 GitHub Actions 自动构建的镜像）
+docker run -d --name tg-content-bot-pro \
+  -e API_ID=your_api_id \
+  -e API_HASH=your_api_hash \
+  -e BOT_TOKEN=your_bot_token \
+  -e AUTH=your_user_id \
+  -e MONGO_DB=your_mongodb_url \
+  -e ENCRYPTION_KEY=your_key \
+  -v $(pwd)/logs:/app/logs \
+  -p 28089:28089 \
+  ghcr.io/liwoyuandiane/tg-content-bot-pro:latest
 
-# Docker Run (手动指定持久化目录)
+# 或使用 .env 文件
 docker run -d --name tg-content-bot-pro \
   --env-file .env \
   -v $(pwd)/logs:/app/logs \
-  -v $(pwd)/sessions:/app/sessions \
   -p 28089:28089 \
-  tg-content-bot-pro-tg-content-bot-pro
+  ghcr.io/liwoyuandiane/tg-content-bot-pro:latest
+
+# Docker Compose（本地构建）
+cd /你的运行目录/TG-Content-Bot-Pro
+docker-compose up -d --build
 
 # 检查日志
 docker logs tg-content-bot-pro --tail 20
 ```
 
+**镜像地址：** `ghcr.io/liwoyuandiane/tg-content-bot-pro:latest`（GitHub Actions 自动构建）
+
 **重要：** Session 文件持久化到 `./sessions/`，重建容器不会丢失，避免 FLOOD_WAIT。
+
+## 更新日志
+
+### 2026-04-29
+- 移除 plugins/ 目录（所有插件），精简代码 88%
+- 新增 handlers.py 统一处理所有命令
+- 优化 message_service.py 智能获取方案
+- 修复 Pyrogram patches 导致的问题，已移除 patches
+- 添加 API_ID 变化自动清理 session
+- 优化 Docker 配置，持久化 sessions 目录
+- 更新 README.md 和 AGENTS.md 文档
+- AGENTS.md 不上传到 GitHub（已加入 .gitignore）
+- BotClient.session 存储到数据库，无需本地持久化
 
 ## Architecture
 
@@ -39,10 +65,6 @@ docker logs tg-content-bot-pro --tail 20
 **注意：**
 - userbot 获取的 file_id 和 bot 不兼容，可能导致 MEDIA_EMPTY
 - 成功时不显示提示，失败时才显示错误
-
-## Pyrogram Patches (clients.py)
-
-已移除 Pyrogram patches，因为会干扰 bot 的正常工作。如果遇到 peer 相关错误，需要在应用层处理。
 
 ## Common Errors
 
@@ -75,3 +97,4 @@ LOG_LEVEL=DEBUG
 - **Always send via bot** (`client.send_*`), never via userbot
 - Docker image: Alpine-based, ~193MB
 - **换机器人时自动清理 session** — API_ID 变化时自动删除旧 session
+- **AGENTS.md 不上传到 GitHub** — 已加入 .gitignore
