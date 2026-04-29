@@ -30,7 +30,6 @@ docker run -d --name tg-content-bot-pro \
   -e AUTH=your_user_id \
   -e MONGO_DB=your_mongodb_url \
   -e ENCRYPTION_KEY=your_key \
-  -v $(pwd)/logs:/app/logs \
   -p 28089:28089 \
   ghcr.io/liwoyuandiane/tg-content-bot-pro:latest
 ```
@@ -40,7 +39,6 @@ docker run -d --name tg-content-bot-pro \
 ```bash
 docker run -d --name tg-content-bot-pro \
   --env-file .env \
-  -v $(pwd)/logs:/app/logs \
   -p 28089:28089 \
   ghcr.io/liwoyuandiane/tg-content-bot-pro:latest
 ```
