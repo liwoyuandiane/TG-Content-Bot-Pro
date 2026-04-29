@@ -1,5 +1,6 @@
 """Pyrogram 消息处理器"""
 import logging
+import re
 from pyrogram import Client, filters
 
 from .core.clients import client_manager
@@ -10,6 +11,9 @@ from .services.permission_service import permission_service
 from .utils.media_utils import get_link
 
 logger = logging.getLogger(__name__)
+
+# 用户状态管理
+user_states = {}  # user_id -> {"state": "waiting_phone", "phone": None}
 
 
 def register_all_handlers(bot: Client):
@@ -276,7 +280,24 @@ def register_all_handlers(bot: Client):
             await message.reply("❌ 未配置 API 凭证")
             return
         
-        await message.reply("请发送您的手机号码（格式：+8613800138000）")
+        user_states[user_id] = {"state": "waiting_phone", "phone": None}
+        await message.reply("请发送您的手机号码（格式：+8613800138000 或 +16828004917）")
+    
+    def parse_phone_number(text: str) -> str:
+        """解析并标准化手机号格式"""
+        # 移除所有空格、括号、横杠
+        cleaned = re.sub(r'[\s\(\)\-\+]', '', text)
+        
+        # 如果以 00 开头，替换为 +
+        if cleaned.startswith('00'):
+            cleaned = cleaned[2:]
+        
+        # 确保是数字
+        if not cleaned.isdigit():
+            return None
+        
+        # 添加 + 前缀
+        return '+' + cleaned
     
     @bot.on_message(filters.command("retry_session"))
     async def retry_session(client, message):
@@ -319,6 +340,26 @@ def register_all_handlers(bot: Client):
         
         user_id = message.from_user.id
         text = message.text.strip()
+        
+        # 处理用户状态（等待输入手机号）
+        if user_id in user_states and user_states[user_id].get("state") == "waiting_phone":
+            phone = parse_phone_number(text)
+            if not phone:
+                await message.reply("❌ 手机号格式无效，请重新发送（格式：+8613800138000 或 +16828004917）")
+                return
+            
+            await message.reply(f"📱 正在验证手机号: {phone}\n请稍候...")
+            
+            # TODO: 这里应该调用 Pyrogram 的 phone 登录流程
+            # 目前先提示用户使用 /addsession 命令
+            user_states.pop(user_id, None)
+            await message.reply(
+                f"✅ 手机号已收到: {phone}\n\n"
+                "⚠️ 自动登录功能暂未实现，请使用以下方式之一：\n"
+                "1. 使用 /addsession <session_string> 命令添加 SESSION\n"
+                "2. 使用在线工具生成 SESSION：https://replit.com/@levinaldas/Pyrogram-Session-Generator"
+            )
+            return
         
         # 权限检查
         if not await user_service.is_user_authorized(user_id):
