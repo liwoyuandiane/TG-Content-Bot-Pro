@@ -149,24 +149,30 @@ async def forward_message(userbot: Client, bot: Client, user_id: int, msg_link: 
                 try:
                     saved = await userbot.get_messages("me", saved_msg_id)
                     if saved and not getattr(saved, 'empty', False):
-                        logger.info("尝试 copy 消息给用户")
+                        logger.info(f"userbot copy 消息给用户: user_id={user_id}, photo={bool(saved.photo)}")
                         
-                        if saved.video:
-                            await userbot.send_video(user_id, saved.video.file_id, caption=saved.caption or "")
-                        elif saved.photo:
-                            await userbot.send_photo(user_id, saved.photo.file_id, caption=saved.caption or "")
-                        elif saved.document:
-                            await userbot.send_document(user_id, saved.document.file_id, caption=saved.caption or "")
-                        elif saved.audio:
-                            await userbot.send_audio(user_id, saved.audio.file_id, caption=saved.caption or "")
-                        elif saved.voice:
-                            await userbot.send_voice(user_id, saved.voice.file_id, caption=saved.caption or "")
-                        elif saved.sticker:
-                            await userbot.send_sticker(user_id, saved.sticker.file_id)
-                        elif saved.animation:
-                            await userbot.send_animation(user_id, saved.animation.file_id, caption=saved.caption or "")
-                        elif saved.text:
-                            await userbot.send_message(user_id, saved.text)
+                        try:
+                            if saved.video:
+                                await userbot.send_video(user_id, saved.video.file_id, caption=saved.caption or "")
+                            elif saved.photo:
+                                result = await userbot.send_photo(user_id, saved.photo.file_id, caption=saved.caption or "")
+                                logger.info(f"send_photo result: {result}")
+                            elif saved.document:
+                                await userbot.send_document(user_id, saved.document.file_id, caption=saved.caption or "")
+                            elif saved.audio:
+                                await userbot.send_audio(user_id, saved.audio.file_id, caption=saved.caption or "")
+                            elif saved.voice:
+                                await userbot.send_voice(user_id, saved.voice.file_id, caption=saved.caption or "")
+                            elif saved.sticker:
+                                await userbot.send_sticker(user_id, saved.sticker.file_id)
+                            elif saved.animation:
+                                await userbot.send_animation(user_id, saved.animation.file_id, caption=saved.caption or "")
+                            elif saved.text:
+                                await userbot.send_message(user_id, saved.text)
+                            
+                            logger.info("userbot copy 成功!")
+                        except Exception as e2:
+                            logger.error(f"userbot send 失败: {e2}")
                         
                         # 删除收藏
                         try:
