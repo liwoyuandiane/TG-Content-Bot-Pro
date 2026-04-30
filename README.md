@@ -24,6 +24,7 @@ Telegram 受限内容保存机器人，支持从公开和私密频道获取消�
 
 ```bash
 docker run -d --name tg-content-bot-pro \
+  --restart=always \
   -e API_ID=your_api_id \
   -e API_HASH=your_api_hash \
   -e BOT_TOKEN=your_bot_token \
@@ -39,6 +40,7 @@ docker run -d --name tg-content-bot-pro \
 
 ```bash
 docker run -d --name tg-content-bot-pro \
+  --restart=always \
   --env-file .env \
   -p 28089:28089 \
   ghcr.io/liwoyuandiane/tg-content-bot-pro:latest
