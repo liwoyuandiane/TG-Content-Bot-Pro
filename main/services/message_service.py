@@ -81,7 +81,7 @@ async def forward_message(userbot: Client, bot: Client, user_id: int, msg_link: 
             return True, ""
         except RPCError as e:
             err = str(e)
-            logger.error(f"发送失败: {err}")
+            logger.error(f"发送失��: {err}")
             if "MEDIA_EMPTY" not in err:
                 return False, f"❌ 发送失败: {err[:50]}"
         
@@ -109,49 +109,51 @@ async def forward_message(userbot: Client, bot: Client, user_id: int, msg_link: 
                 saved_msg_id = saved_msg.id
                 logger.info(f"已转发到收藏夹: msg_id={saved_msg_id}")
                 
-                # 2. 用 bot.get_messages 从收藏夹获取消息
-                saved_in_bot = await bot.get_messages("me", saved_msg_id)
+                # 2. 先尝试用 bot 从收藏夹获取并发送
+                try:
+                    saved_in_bot = await bot.get_messages("me", saved_msg_id)
+                    
+                    if saved_in_bot and not getattr(saved_in_bot, 'empty', False):
+                        logger.info(f"bot.get_messages 从收藏夹成功")
+                        
+                        # bot 发送给用户
+                        if saved_in_bot.video:
+                            await bot.send_video(user_id, saved_in_bot.video.file_id, caption=saved_in_bot.caption or "")
+                        elif saved_in_bot.photo:
+                            await bot.send_photo(user_id, saved_in_bot.photo.file_id, caption=saved_in_bot.caption or "")
+                        elif saved_in_bot.document:
+                            await bot.send_document(user_id, saved_in_bot.document.file_id, caption=saved_in_bot.caption or "")
+                        elif saved_in_bot.audio:
+                            await bot.send_audio(user_id, saved_in_bot.audio.file_id, caption=saved_in_bot.caption or "")
+                        elif saved_in_bot.voice:
+                            await bot.send_voice(user_id, saved_in_bot.voice.file_id, caption=saved_in_bot.caption or "")
+                        elif saved_in_bot.sticker:
+                            await bot.send_sticker(user_id, saved_in_bot.sticker.file_id)
+                        elif saved_in_bot.animation:
+                            await bot.send_animation(user_id, saved_in_bot.animation.file_id, caption=saved_in_bot.caption or "")
+                        elif saved_in_bot.text:
+                            await bot.send_message(user_id, saved_in_bot.text)
+                        
+                        # 删除收藏夹消息
+                        try:
+                            await userbot.delete_messages("me", saved_msg_id)
+                            logger.info("收藏夹消息已删除")
+                        except:
+                            pass
+                        
+                        logger.info(f"通过收藏夹发送成功: {msg_link}")
+                        return True, ""
+                except Exception as e:
+                    logger.warning(f"bot 无法从收藏夹获取: {e}")
                 
-                if saved_in_bot and not getattr(saved_in_bot, 'empty', False):
-                    logger.info(f"bot.get_messages 从收藏夹成功: video={bool(saved_in_bot.video)}, photo={bool(saved_in_bot.photo)}")
-                    
-                    # 3. bot 转发给用户
-                    if saved_in_bot.video:
-                        await bot.send_video(user_id, saved_in_bot.video.file_id, caption=saved_in_bot.caption or "")
-                    elif saved_in_bot.photo:
-                        await bot.send_photo(user_id, saved_in_bot.photo.file_id, caption=saved_in_bot.caption or "")
-                    elif saved_in_bot.document:
-                        await bot.send_document(user_id, saved_in_bot.document.file_id, caption=saved_in_bot.caption or "")
-                    elif saved_in_bot.audio:
-                        await bot.send_audio(user_id, saved_in_bot.audio.file_id, caption=saved_in_bot.caption or "")
-                    elif saved_in_bot.voice:
-                        await bot.send_voice(user_id, saved_in_bot.voice.file_id, caption=saved_in_bot.caption or "")
-                    elif saved_in_bot.sticker:
-                        await bot.send_sticker(user_id, saved_in_bot.sticker.file_id)
-                    elif saved_in_bot.animation:
-                        await bot.send_animation(user_id, saved_in_bot.animation.file_id, caption=saved_in_bot.caption or "")
-                    elif saved_in_bot.text:
-                        await bot.send_message(user_id, saved_in_bot.text)
-                    
-                    logger.info(f"通过收藏夹发送成功: {msg_link}")
-                    
-                    # 4. 删除收藏夹消息
-                    try:
-                        await userbot.delete_messages("me", saved_msg_id)
-                        logger.info("收藏夹消息已删除")
-                    except Exception as e:
-                        logger.warning(f"删除收藏夹消息失败: {e}")
-                    
-                    return True, ""
-                else:
-                    logger.warning("bot 无法访问收藏夹消息")
-                    # 直接用 userbot 转发给用户
+                # 3. bot 失败，用 userbot 直接从收藏夹转发给用户
+                try:
                     await userbot.forward_messages(
                         chat_id=user_id,
                         from_chat_id="me",
                         message_ids=saved_msg_id
                     )
-                    logger.info(f"userbot 直接转发成功: {msg_link}")
+                    logger.info(f"userbot 从收藏夹转发成功")
                     
                     # 删除收藏夹消息
                     try:
@@ -161,6 +163,13 @@ async def forward_message(userbot: Client, bot: Client, user_id: int, msg_link: 
                         pass
                     
                     return True, ""
+                except Exception as e:
+                    logger.error(f"userbot 从收藏夹转发失败: {e}")
+                    # 尝试删除收藏夹消息
+                    try:
+                        await userbot.delete_messages("me", saved_msg_id)
+                    except:
+                        pass
             
             except Exception as e:
                 logger.error(f"收藏夹中转失败: {e}", exc_info=True)
