@@ -19,12 +19,21 @@ def parse_link(msg_link: str):
         return int('-100' + parts[0]), int(parts[1])
     else:
         parts = msg_link.split('t.me/')[1].split('/')
+        # 检查是否有消息ID
+        if len(parts) < 2 or not parts[1].isdigit():
+            return None, None
         return parts[0], int(parts[1])
 
 
 async def forward_message(userbot: Client, bot: Client, user_id: int, msg_link: str):
     try:
         chat_id, msg_id = parse_link(msg_link)
+        
+        # 检查是否成功解析
+        if chat_id is None or msg_id is None:
+            logger.warning(f"链接格式无效，缺少消息ID: {msg_link}")
+            return False, "❌ 链接格式无效，请使用包含消息ID的链接，如：https://t.me/username/123"
+        
         logger.info(f"解析: chat={chat_id}, msg={msg_id}")
         
         # 获取消息
