@@ -5,6 +5,7 @@ import re
 from typing import Tuple, Optional, Dict, Any
 
 from pyrogram import Client
+from pyrogram.errors import SessionPasswordNeeded
 from ..config import settings
 
 logger = logging.getLogger(__name__)
@@ -41,7 +42,8 @@ class SessionGenerator:
             self.pending_logins[phone_number] = {
                 "client": client,
                 "phone_code_hash": result.phone_code_hash,
-                "phone_number": phone_number
+                "phone_number": phone_number,
+                "state": "waiting_code"
             }
             
             return True, "请回复收到的验证码（如 1 2 3 4 5）"
@@ -84,6 +86,12 @@ class SessionGenerator:
             
             return True, session_string
             
+        except SessionPasswordNeeded:
+            # 两步验证需要密码
+            logger.info("用户启用了两步验证，需要密码")
+            info["state"] = "waiting_password"
+            return False, "NEED_PASSWORD"
+            
         except Exception as e:
             logger.error(f"验证失败: {type(e).__name__}: {e}", exc_info=True)
             try:
@@ -93,6 +101,42 @@ class SessionGenerator:
             if phone_number in self.pending_logins:
                 del self.pending_logins[phone_number]
             return False, f"验证码错误: {type(e).__name__}"
+    
+    async def verify_password(self, phone_number: str, password: str) -> Tuple[bool, str]:
+        """验证两步验证密码"""
+        logger.info(f"验证两步验证密码: phone={phone_number[:7]}***")
+        
+        if phone_number not in self.pending_logins:
+            return False, "请先发送手机号"
+        
+        info = self.pending_logins[phone_number]
+        client = info["client"]
+        
+        try:
+            if not client.is_connected:
+                await client.connect()
+            
+            logger.info("正在调用 check_password...")
+            session = await client.check_password(password)
+            
+            logger.info("密码验证成功，导出 session...")
+            session_string = client.export_session_string()
+            logger.info(f"Session 导出成功，长度: {len(session_string)}")
+            
+            await client.disconnect()
+            del self.pending_logins[phone_number]
+            
+            return True, session_string
+            
+        except Exception as e:
+            logger.error(f"密码验证失败: {type(e).__name__}: {e}", exc_info=True)
+            try:
+                await client.disconnect()
+            except:
+                pass
+            if phone_number in self.pending_logins:
+                del self.pending_logins[phone_number]
+            return False, f"密码错误: {type(e).__name__}"
 
 
 session_generator = SessionGenerator()
@@ -106,3 +150,8 @@ async def generate_session_by_phone(phone_number: str) -> Tuple[bool, str]:
 async def verify_phone_code(phone_number: str, code: str) -> Tuple[bool, str]:
     """验证验证码并获取 session - 第二步"""
     return await session_generator.verify_and_get_session(phone_number, code)
+
+
+async def verify_password(phone_number: str, password: str) -> Tuple[bool, str]:
+    """验证两步验证密码 - 第三步"""
+    return await session_generator.verify_password(phone_number, password)

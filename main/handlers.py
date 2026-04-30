@@ -429,6 +429,38 @@ def register_all_handlers(bot: Client):
             from .services.session_generator import verify_phone_code
             success, result = await verify_phone_code(phone, code)
             
+            if success:
+                await session_service.save_session(user_id, result)
+                user_states.pop(user_id, None)
+                await message.reply(
+                    "✅ SESSION 生成成功！\n\n"
+                    "您的 Userbot 已自动启动，可以转发私密频道消息了"
+                )
+            elif result == "NEED_PASSWORD":
+                # 需要两步验证密码
+                user_states[user_id]["state"] = "waiting_password"
+                await message.reply("🔑 您的账号启用了两步验证，请发送密码：")
+            else:
+                user_states.pop(user_id, None)
+                await message.reply(f"❌ 验证失败: {result}\n请重新发送 /generatesession 重试")
+            return
+        
+        # 处理用户状态（等待输入两步验证密码）
+        if user_id in user_states and user_states[user_id].get("state") == "waiting_password":
+            state = user_states[user_id]
+            phone = state.get("phone")
+            password = text.strip()
+            
+            if not phone:
+                user_states.pop(user_id, None)
+                await message.reply("❌ 会话已过期，请重新发送 /generatesession")
+                return
+            
+            await message.reply("🔐 正在验证密码...")
+            
+            from .services.session_generator import verify_password
+            success, result = await verify_password(phone, password)
+            
             user_states.pop(user_id, None)
             
             if success:
@@ -438,7 +470,7 @@ def register_all_handlers(bot: Client):
                     "您的 Userbot 已自动启动，可以转发私密频道消息了"
                 )
             else:
-                await message.reply(f"❌ 验证失败: {result}\n请重新发送 /generatesession 重试")
+                await message.reply(f"❌ 密码错误: {result}\n请重新发送 /generatesession 重试")
             return
         
         # 权限检查
