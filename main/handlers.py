@@ -506,7 +506,7 @@ def register_all_handlers(bot: Client):
             return
         
         # 处理转发
-        status_msg = await message.reply("⏳ 正在处理...")
+        await message.reply("⏳ 正在处理...")
         
         try:
             success, result_msg = await forward_message(
@@ -516,14 +516,12 @@ def register_all_handlers(bot: Client):
                 msg_link=link
             )
             if success:
-                # 成功则删除状态消息
-                await status_msg.delete()
+                await message.reply("✅ 转发成功")
             else:
-                # 失败显示错误
-                await status_msg.edit(result_msg)
+                await message.reply(result_msg or "❌ 转发失败")
         except Exception as e:
             logger.error(f"处理消息失败: {e}", exc_info=True)
-            await status_msg.edit(f"❌ 处理失败: {str(e)}")
+            await message.reply(f"❌ 处理失败: {str(e)}")
     
     @bot.on_callback_query()
     async def handle_callback(client, callback_query):

@@ -34,7 +34,9 @@ async def forward_message(userbot: Client, bot: Client, user_id: int, msg_link: 
         try:
             msg = await bot.get_messages(chat_id, msg_id)
             if msg and not getattr(msg, 'empty', False) and (msg.video or msg.photo or msg.document or msg.audio or msg.voice or msg.sticker or msg.animation or msg.text):
-                logger.info(f"bot.get_messages 成功")
+                logger.info(f"bot.get_messages 成功: photo={bool(msg.photo)}, video={bool(msg.video)}")
+            else:
+                msg = None
         except Exception as e:
             logger.warning(f"bot.get_messages 失败: {e}")
             msg = None
@@ -44,7 +46,9 @@ async def forward_message(userbot: Client, bot: Client, user_id: int, msg_link: 
             try:
                 msg = await userbot.get_messages(chat_id, msg_id)
                 if msg and not getattr(msg, 'empty', False):
-                    logger.info(f"userbot.get_messages 成功")
+                    logger.info(f"userbot.get_messages 成功: photo={bool(msg.photo)}, video={bool(msg.video)}")
+                else:
+                    msg = None
             except Exception as e:
                 logger.warning(f"userbot.get_messages 失败: {e}")
                 msg = None
@@ -78,8 +82,13 @@ async def forward_message(userbot: Client, bot: Client, user_id: int, msg_link: 
         except RPCError as e:
             err = str(e)
             logger.error(f"发送失败: {err}")
-            if "MEDIA_EMPTY" not in err:
+            if "MEDIA_EMPTY" in err:
+                pass  # 继续尝试收藏夹中转
+            else:
                 return False, f"❌ 发送失败: {err[:50]}"
+        except Exception as e:
+            logger.warning(f"发送异常: {e}")
+            pass  # 继续尝试收藏夹中转
         
         # 收藏夹中转
         if userbot and userbot.is_connected:
