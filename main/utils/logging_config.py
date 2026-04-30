@@ -62,7 +62,7 @@ class StructuredFormatter(logging.Formatter):
 def setup_logging():
     """设置日志配置 - 支持日志轮转和结构化日志"""
     # 强制开发环境配置
-    env = os.getenv('ENVIRONMENT', 'development')
+    env = os.getenv('ENVIRONMENT', 'production')
     debug_mode = os.getenv('DEBUG', 'false').lower() == 'true'
     
     # 开发环境强制使用详细日志
