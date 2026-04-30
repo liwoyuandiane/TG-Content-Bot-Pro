@@ -1,7 +1,6 @@
 """Telegram客户端管理模块"""
 import logging
 import os
-import sqlite3
 from typing import Dict, Any, Optional
 
 from pyrogram import Client as PyrogramClient

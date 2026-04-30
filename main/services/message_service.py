@@ -3,7 +3,6 @@ import logging
 
 from pyrogram import Client
 from pyrogram.errors import RPCError
-from ..core.database import db_manager
 
 logger = logging.getLogger(__name__)
 
