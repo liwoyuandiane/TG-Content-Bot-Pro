@@ -10,6 +10,7 @@ from .services.user_service import user_service
 from .services.session_service import session_service
 from .services.permission_service import permission_service
 from .utils.media_utils import get_link
+from .utils.session_utils import validate_pyrogram_session
 from .config import settings
 
 logger = logging.getLogger(__name__)
@@ -174,7 +175,6 @@ def register_all_handlers(bot: Client):
         text = message.text.strip()
         if len(text.split(maxsplit=1)) >= 2:
             session_string = text.split(maxsplit=1)[1].strip()
-            from ..utils.session_utils import validate_pyrogram_session
             if validate_pyrogram_session(session_string):
                 await session_service.save_session(user_id, session_string)
                 
