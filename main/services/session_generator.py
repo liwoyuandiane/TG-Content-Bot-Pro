@@ -1,7 +1,5 @@
 """SESSION 自动生成器"""
-import asyncio
 import logging
-import re
 from typing import Tuple, Optional, Dict, Any
 
 from pyrogram import Client

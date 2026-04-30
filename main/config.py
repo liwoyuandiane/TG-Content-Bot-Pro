@@ -2,7 +2,6 @@
 
 该模块提供应用的配置管理功能，包括环境变量加载、配置验证和运行时配置管理。
 """
-import os
 import logging
 import re
 from typing import Optional, Any, Dict, List, Union

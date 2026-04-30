@@ -4,10 +4,8 @@
 """
 import logging
 import os
-import glob
 import sys
 import json
-from datetime import datetime
 from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
 from typing import Dict, Any, Optional
 
