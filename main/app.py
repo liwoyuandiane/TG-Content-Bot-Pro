@@ -8,7 +8,6 @@ import atexit
 import fcntl
 from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from pathlib import Path
 from pyrogram.types import BotCommand
 
 from .core.clients import client_manager
