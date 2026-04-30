@@ -4,6 +4,7 @@ import re
 from pyrogram import Client, filters
 
 from .core.clients import client_manager
+from .core.database import db_manager
 from .services.message_service import forward_message
 from .services.user_service import user_service
 from .services.session_service import session_service
@@ -116,7 +117,6 @@ def register_all_handlers(bot: Client):
     
     @bot.on_message(filters.command("history"))
     async def history_command(client, message):
-        from ..core.database import db_manager
         user_id = message.from_user.id
         
         if not await permission_service.require_authorized(user_id):
@@ -136,7 +136,6 @@ def register_all_handlers(bot: Client):
     
     @bot.on_message(filters.command("clearhistory"))
     async def clear_history_command(client, message):
-        from ..core.database import db_manager
         user_id = message.from_user.id
         
         if not await permission_service.require_owner(user_id):
