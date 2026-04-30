@@ -1,9 +1,8 @@
 """消息服务 - 智能获取方案"""
 import logging
-import asyncio
 
 from pyrogram import Client
-from pyrogram.errors import RPCError, FloodWait, Forbidden
+from pyrogram.errors import RPCError
 from ..core.database import db_manager
 
 logger = logging.getLogger(__name__)

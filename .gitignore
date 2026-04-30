@@ -127,4 +127,3 @@ test_bot_commands.py
 *.flv
 *.mkv
 sessions/
-AGENTS.md

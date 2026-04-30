@@ -22,7 +22,6 @@ setup_logging()
 logger = get_logger(__name__)
 
 # 全局抑制 Pyrogram 内部错误
-import asyncio
 asyncio.set_event_loop_policy(asyncio.DefaultEventLoopPolicy())
 
 # 单实例锁文件
