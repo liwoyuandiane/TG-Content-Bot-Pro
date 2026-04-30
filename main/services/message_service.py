@@ -55,7 +55,7 @@ async def forward_message(userbot: Client, bot: Client, user_id: int, msg_link: 
                 return False, "❌ 无法访问该频道，请配置 SESSION 或将机器人添加到频道"
             return False, "❌ 消息为空或不存在"
         
-        # 用 bot 发送
+        # 方案A: bot 直接发送
         try:
             if msg.video:
                 await bot.send_video(user_id, msg.video.file_id, caption=msg.caption or "")
@@ -77,16 +77,75 @@ async def forward_message(userbot: Client, bot: Client, user_id: int, msg_link: 
                 return False, "❌ 不支持的消息类型"
             
             logger.info(f"发送成功: {msg_link}")
-            return True, ""  # 成功不返回消息
+            return True, ""
         except RPCError as e:
             err = str(e)
             logger.error(f"发送失败: {err}")
-            if "MEDIA_EMPTY" in err:
-                return False, "❌ 该消息无法转发（可能是受限内容）"
-            return False, f"❌ 发送失败: {err[:50]}"
-        except Exception as e:
-            logger.error(f"发送异常: {e}")
-            return False, f"❌ 错误: {str(e)[:40]}"
+            if "MEDIA_EMPTY" not in err:
+                return False, f"❌ 发送失败: {err[:50]}"
+        
+        # 方案B: 通过收藏夹中转（私有频道）
+        if userbot and userbot.is_connected:
+            try:
+                logger.info("尝试通过收藏夹中转...")
+                
+                # 1. 转发到收藏夹
+                forwarded = await userbot.forward_messages(
+                    chat_id="me",
+                    from_chat_id=chat_id,
+                    message_ids=msg_id
+                )
+                
+                if not forwarded:
+                    return False, "❌ 转发到收藏夹失败"
+                
+                # 获取转发后的消息ID
+                if isinstance(forwarded, list):
+                    saved_msg_id = forwarded[0].id
+                else:
+                    saved_msg_id = forwarded.id
+                
+                logger.info(f"已转发到收藏夹: msg_id={saved_msg_id}")
+                
+                # 2. bot 从收藏夹获取消息
+                saved_msg = await bot.get_messages("me", saved_msg_id)
+                
+                if saved_msg and not getattr(saved_msg, 'empty', False):
+                    # 3. bot 发送给用户
+                    if saved_msg.video:
+                        await bot.send_video(user_id, saved_msg.video.file_id, caption=saved_msg.caption or "")
+                    elif saved_msg.photo:
+                        await bot.send_photo(user_id, saved_msg.photo.file_id, caption=saved_msg.caption or "")
+                    elif saved_msg.document:
+                        await bot.send_document(user_id, saved_msg.document.file_id, caption=saved_msg.caption or "")
+                    elif saved_msg.audio:
+                        await bot.send_audio(user_id, saved_msg.audio.file_id, caption=saved_msg.caption or "")
+                    elif saved_msg.voice:
+                        await bot.send_voice(user_id, saved_msg.voice.file_id, caption=saved_msg.voice or "")
+                    elif saved_msg.sticker:
+                        await bot.send_sticker(user_id, saved_msg.sticker.file_id)
+                    elif saved_msg.animation:
+                        await bot.send_animation(user_id, saved_msg.animation.file_id, caption=saved_msg.caption or "")
+                    elif saved_msg.text:
+                        await bot.send_message(user_id, saved_msg.text)
+                    else:
+                        return False, "❌ 不支持的消息类型"
+                    
+                    logger.info(f"通过收藏夹发送成功: {msg_link}")
+                    
+                    # 4. 删除收藏夹消息
+                    try:
+                        await userbot.delete_messages("me", saved_msg_id)
+                        logger.info("收藏夹消息已删除")
+                    except:
+                        pass
+                    
+                    return True, ""
+            
+            except Exception as e:
+                logger.error(f"收藏夹中转失败: {e}", exc_info=True)
+        
+        return False, "❌ 该消息无法转发（可能是受限内容）"
         
     except Exception as e:
         logger.error(f"异常: {e}")
