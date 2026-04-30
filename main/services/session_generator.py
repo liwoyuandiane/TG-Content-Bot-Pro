@@ -117,10 +117,10 @@ class SessionGenerator:
                 await client.connect()
             
             logger.info("正在调用 check_password...")
-            session = await client.check_password(password)
+            await client.check_password(password)
             
             logger.info("密码验证成功，导出 session...")
-            session_string = client.export_session_string()
+            session_string = await client.export_session_string()
             logger.info(f"Session 导出成功，长度: {len(session_string)}")
             
             await client.disconnect()
