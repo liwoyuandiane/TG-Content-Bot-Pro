@@ -104,15 +104,20 @@ def setup_logging():
     console_handler.setFormatter(console_formatter)
     root_logger.addHandler(console_handler)
     
-    # 添加文件处理器（带重启序号的日志文件）
-    log_file = _get_next_log_file(log_dir)
+    # 添加文件处理器（固定文件名 tg_bot.log）
+    log_file = _get_log_file(log_dir)
     
-    # 使用RotatingFileHandler实现按重启次数轮转
-    # 保留最近10个日志文件
-    file_handler = RotatingFileHandler(
+    # 检查日志文件大小，超过5MB则清空
+    if os.path.exists(log_file) and os.path.getsize(log_file) > 5 * 1024 * 1024:
+        with open(log_file, 'w') as f:
+            f.truncate(0)
+        print(f"📄 日志文件已清空（超过5MB）")
+    
+    # 使用 AutoReopenFileHandler 支持日志文件被删除后自动重新创建
+    file_handler = AutoReopenFileHandler(
         filename=log_file,
-        maxBytes=50 * 1024 * 1024,  # 50MB
-        backupCount=9,              # 保留最近10个日志文件（包括当前文件）
+        maxBytes=5 * 1024 * 1024,  # 5MB
+        backupCount=0,              # 不保留备份（达到上限直接清空）
         encoding='utf-8'
     )
     file_handler.setLevel(logging.INFO)
@@ -138,52 +143,40 @@ def setup_logging():
         print(f"📊 日志级别: {log_level_name}")
         print(f"🌍 环境: {env}")
         print(f"🐛 调试模式: {debug_mode}")
-        print(f"📁 日志目录: {os.path.abspath(log_dir)}")
-        print(f"📋 日志文件保留数量: 10")
+        print(f"📁 日志文件: {os.path.abspath(log_file)}")
         print("=" * 70)
     
     return logging.getLogger(__name__)
 
 
-def _get_next_log_file(log_dir: str) -> str:
-    """获取下一个可用的日志文件名（按重启次数编号）"""
-    import datetime
-    today = datetime.datetime.now().strftime("%Y%m%d")
+def _get_log_file(log_dir: str) -> str:
+    """获取日志文件名（固定为 tg_bot.log）"""
+    return os.path.join(log_dir, "tg_bot.log")
+
+
+class AutoReopenFileHandler(RotatingFileHandler):
+    """自动重新打开文件的 Handler，用于处理日志文件被删除的情况"""
+    def emit(self, record):
+        try:
+            if self.stream is None or not os.path.exists(self.baseFilename):
+                self.reopen()
+            super().emit(record)
+        except Exception:
+            self.handleError(record)
     
-    # 查找今天的日志文件
-    log_files = glob.glob(os.path.join(log_dir, f"tg_bot_{today}_*.log"))
-    
-    # 提取序号
-    max_seq = 0
-    for log_file in log_files:
-        basename = os.path.basename(log_file)
-        parts = basename.split('_')
-        if len(parts) >= 4:
+    def reopen(self):
+        """重新打开日志文件"""
+        if self.stream:
             try:
-                seq = int(parts[3].split('.')[0])  # 去掉.log后缀
-                max_seq = max(max_seq, seq)
-            except ValueError:
-                continue
-    
-    # 下一个序号
-    next_seq = max_seq + 1
-    return os.path.join(log_dir, f"tg_bot_{today}_{next_seq:03d}.log")
+                self.stream.close()
+            except:
+                pass
+        self.stream = open(self.baseFilename, self.mode)
 
 
 def _cleanup_old_logs(log_dir: str):
-    """清理旧的日志文件，只保留最新的10个"""
-    log_files = glob.glob(os.path.join(log_dir, "tg_bot_*.log"))
-    
-    # 按修改时间排序
-    log_files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
-    
-    # 删除超出10个的文件
-    for log_file in log_files[10:]:
-        try:
-            os.remove(log_file)
-            print(f"已删除旧日志文件: {log_file}")
-        except OSError:
-            pass  # 忽略删除失败
+    """清理旧的日志文件（单个文件，不需要清理）"""
+    pass
 
 
 def _optimize_third_party_logging():

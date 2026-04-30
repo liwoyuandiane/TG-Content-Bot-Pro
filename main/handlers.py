@@ -505,9 +505,7 @@ def register_all_handlers(bot: Client):
             logger.error(f"解析链接失败: {e}")
             return
         
-        # 处理转发
-        await message.reply("⏳ 正在处理...")
-        
+        # 处理转发（不发送处理中和成功提示）
         try:
             success, result_msg = await forward_message(
                 userbot=client_manager.userbot,
@@ -515,9 +513,7 @@ def register_all_handlers(bot: Client):
                 user_id=user_id,
                 msg_link=link
             )
-            if success:
-                await message.reply("✅ 转发成功")
-            else:
+            if not success:
                 await message.reply(result_msg or "❌ 转发失败")
         except Exception as e:
             logger.error(f"处理消息失败: {e}", exc_info=True)
