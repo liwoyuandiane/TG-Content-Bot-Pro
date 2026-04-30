@@ -14,13 +14,15 @@ class SessionGenerator:
     """SESSION 自动生成器"""
     
     def __init__(self):
-        self.pending_logins: Dict[int, Dict[str, Any]] = {}
+        self.pending_logins: Dict[str, Dict[str, Any]] = {}
     
     async def send_verification_code(self, phone_number: str) -> Tuple[bool, str]:
         """发送验证码到手机号"""
+        logger.info(f"发送验证码到: {phone_number[:7]}***")
+        
         try:
             client = Client(
-                name=f"temp_session",
+                name="temp_session",
                 api_hash=settings.API_HASH,
                 api_id=settings.API_ID,
                 app_version="TG-Content-Bot-Pro",
@@ -31,8 +33,10 @@ class SessionGenerator:
             )
             
             await client.connect()
+            logger.info("已连接到 Telegram")
             
             result = await client.send_code(phone_number)
+            logger.info(f"验证码发送成功，hash: {result.phone_code_hash[:10]}...")
             
             self.pending_logins[phone_number] = {
                 "client": client,
@@ -40,29 +44,40 @@ class SessionGenerator:
                 "phone_number": phone_number
             }
             
-            logger.info(f"验证码已发送到 {phone_number[:7]}***")
-            return True, "请回复收到的验证码（如 12345）"
+            return True, "请回复收到的验证码（如 1 2 3 4 5）"
             
         except Exception as e:
-            logger.error(f"发送验证码失败: {e}")
+            logger.error(f"发送验证码失败: {e}", exc_info=True)
             return False, f"发送失败: {str(e)}"
     
     async def verify_and_get_session(self, phone_number: str, code: str) -> Tuple[bool, str]:
         """验证验证码并获取 session"""
+        logger.info(f"验证验证码: phone={phone_number[:7]}***, code={code}")
+        
         if phone_number not in self.pending_logins:
+            logger.error(f"找不到手机号 {phone_number[:7]}*** 的登录记录")
             return False, "请先发送手机号"
         
         info = self.pending_logins[phone_number]
         client = info["client"]
+        phone_code_hash = info["phone_code_hash"]
         
         try:
+            # 确保客户端已连接
+            if not client.is_connected:
+                logger.info("客户端未连接，重新连接...")
+                await client.connect()
+            
+            logger.info("正在调用 sign_in...")
             session = await client.sign_in(
                 phone_number,
-                info["phone_code_hash"],
+                phone_code_hash,
                 code
             )
             
+            logger.info("sign_in 成功，导出 session...")
             session_string = client.export_session_string()
+            logger.info(f"Session 导出成功，长度: {len(session_string)}")
             
             await client.disconnect()
             del self.pending_logins[phone_number]
@@ -70,14 +85,14 @@ class SessionGenerator:
             return True, session_string
             
         except Exception as e:
-            logger.error(f"验证失败: {e}")
+            logger.error(f"验证失败: {type(e).__name__}: {e}", exc_info=True)
             try:
                 await client.disconnect()
             except:
                 pass
             if phone_number in self.pending_logins:
                 del self.pending_logins[phone_number]
-            return False, f"验证码错误，请重试"
+            return False, f"验证码错误: {type(e).__name__}"
 
 
 session_generator = SessionGenerator()
