@@ -177,7 +177,14 @@ def register_all_handlers(bot: Client):
             from ..utils.session_utils import validate_pyrogram_session
             if validate_pyrogram_session(session_string):
                 await session_service.save_session(user_id, session_string)
-                await message.reply("✅ SESSION 已保存")
+                
+                # 自动启动 userbot
+                from .config import settings
+                settings.SESSION = session_string
+                from .core.clients import client_manager
+                await client_manager.refresh_userbot_session(session_string)
+                
+                await message.reply("✅ SESSION 已保存，Userbot 已启动")
             else:
                 await message.reply("❌ SESSION 格式无效")
         else:
@@ -432,6 +439,12 @@ def register_all_handlers(bot: Client):
             if success:
                 await session_service.save_session(user_id, result)
                 user_states.pop(user_id, None)
+                
+                # 自动启动 userbot
+                settings.SESSION = result
+                from .core.clients import client_manager
+                await client_manager.refresh_userbot_session(result)
+                
                 await message.reply(
                     "✅ SESSION 生成成功！\n\n"
                     "您的 Userbot 已自动启动，可以转发私密频道消息了"
@@ -465,6 +478,12 @@ def register_all_handlers(bot: Client):
             
             if success:
                 await session_service.save_session(user_id, result)
+                
+                # 自动启动 userbot
+                settings.SESSION = result
+                from .core.clients import client_manager
+                await client_manager.refresh_userbot_session(result)
+                
                 await message.reply(
                     "✅ SESSION 生成成功！\n\n"
                     "您的 Userbot 已自动启动，可以转发私密频道消息了"
