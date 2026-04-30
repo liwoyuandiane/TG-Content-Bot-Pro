@@ -9,6 +9,7 @@ from .services.user_service import user_service
 from .services.session_service import session_service
 from .services.permission_service import permission_service
 from .utils.media_utils import get_link
+from .config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -179,9 +180,7 @@ def register_all_handlers(bot: Client):
                 await session_service.save_session(user_id, session_string)
                 
                 # 自动启动 userbot
-                from .config import settings
                 settings.SESSION = session_string
-                from .core.clients import client_manager
                 await client_manager.refresh_userbot_session(session_string)
                 
                 await message.reply("✅ SESSION 已保存，Userbot 已启动")
@@ -332,7 +331,6 @@ def register_all_handlers(bot: Client):
             await message.reply("❌ 您没有权限")
             return
         
-        from .config import settings
         if not settings.API_ID or not settings.API_HASH:
             await message.reply("❌ 未配置 API 凭证")
             return
@@ -365,7 +363,6 @@ def register_all_handlers(bot: Client):
             await message.reply("❌ 未找到 SESSION")
             return
         
-        from .config import settings
         settings.SESSION = session
         success = await client_manager.refresh_userbot_session(session)
         
@@ -442,7 +439,6 @@ def register_all_handlers(bot: Client):
                 
                 # 自动启动 userbot
                 settings.SESSION = result
-                from .core.clients import client_manager
                 await client_manager.refresh_userbot_session(result)
                 
                 await message.reply(
@@ -481,7 +477,6 @@ def register_all_handlers(bot: Client):
                 
                 # 自动启动 userbot
                 settings.SESSION = result
-                from .core.clients import client_manager
                 await client_manager.refresh_userbot_session(result)
                 
                 await message.reply(
