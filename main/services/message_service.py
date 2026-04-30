@@ -27,36 +27,34 @@ async def forward_message(userbot: Client, bot: Client, user_id: int, msg_link: 
         chat_id, msg_id = parse_link(msg_link)
         logger.info(f"解析: chat={chat_id}, msg={msg_id}")
         
-        # 方案1: 尝试 bot 直接获取（公开频道/群组）
+        # 获取消息
         msg = None
+        
+        # 1. bot 直接获取
         try:
             msg = await bot.get_messages(chat_id, msg_id)
             if msg and not getattr(msg, 'empty', False) and (msg.video or msg.photo or msg.document or msg.audio or msg.voice or msg.sticker or msg.animation or msg.text):
-                logger.info(f"bot.get_messages 成功: video={bool(msg.video)}, photo={bool(msg.photo)}")
-            else:
-                msg = None
+                logger.info(f"bot.get_messages 成功")
         except Exception as e:
             logger.warning(f"bot.get_messages 失败: {e}")
             msg = None
         
-        # 方案2: 用 userbot 获取
+        # 2. userbot 获取
         if not msg and userbot and userbot.is_connected:
             try:
                 msg = await userbot.get_messages(chat_id, msg_id)
-                if msg and not getattr(msg, 'empty', False) and (msg.video or msg.photo or msg.document or msg.audio or msg.voice or msg.sticker or msg.animation or msg.text):
-                    logger.info(f"userbot.get_messages 成功: video={bool(msg.video)}, photo={bool(msg.photo)}")
-                else:
-                    msg = None
+                if msg and not getattr(msg, 'empty', False):
+                    logger.info(f"userbot.get_messages 成功")
             except Exception as e:
                 logger.warning(f"userbot.get_messages 失败: {e}")
                 msg = None
         
         if not msg or getattr(msg, 'empty', False):
             if not userbot or not userbot.is_connected:
-                return False, "❌ 无法访问该频道，请配置 SESSION 或将机器人添加到频道"
+                return False, "❌ 无法访问该频道，请配置 SESSION"
             return False, "❌ 消息为空或不存在"
         
-        # 方案A: bot 直接发送
+        # 尝试 bot 直接发送
         try:
             if msg.video:
                 await bot.send_video(user_id, msg.video.file_id, caption=msg.caption or "")
@@ -74,23 +72,21 @@ async def forward_message(userbot: Client, bot: Client, user_id: int, msg_link: 
                 await bot.send_animation(user_id, msg.animation.file_id, caption=msg.caption or "")
             elif msg.text:
                 await bot.send_message(user_id, msg.text)
-            else:
-                return False, "❌ 不支持的消息类型"
             
-            logger.info(f"发送成功: {msg_link}")
+            logger.info(f"发送成功")
             return True, ""
         except RPCError as e:
             err = str(e)
-            logger.error(f"发送失��: {err}")
+            logger.error(f"发送失败: {err}")
             if "MEDIA_EMPTY" not in err:
                 return False, f"❌ 发送失败: {err[:50]}"
         
-        # 方案B: 通过收藏夹中转（私有频道）
+        # 收藏夹中转
         if userbot and userbot.is_connected:
             try:
                 logger.info("尝试通过收藏夹中转...")
                 
-                # 1. 转发到收藏夹
+                # 转发到收藏夹
                 forwarded = await userbot.forward_messages(
                     chat_id="me",
                     from_chat_id=chat_id,
@@ -100,81 +96,89 @@ async def forward_message(userbot: Client, bot: Client, user_id: int, msg_link: 
                 if not forwarded:
                     return False, "❌ 转发到收藏夹失败"
                 
-                # 获取转发后的消息ID
                 if isinstance(forwarded, list):
-                    saved_msg = forwarded[0]
+                    saved_msg_id = forwarded[0].id
                 else:
-                    saved_msg = forwarded
+                    saved_msg_id = forwarded.id
                 
-                saved_msg_id = saved_msg.id
                 logger.info(f"已转发到收藏夹: msg_id={saved_msg_id}")
                 
-                # 2. 先尝试用 bot 从收藏夹获取并发送
+                # 尝试用 bot 从收藏夹读取
                 try:
-                    saved_in_bot = await bot.get_messages("me", saved_msg_id)
-                    
-                    if saved_in_bot and not getattr(saved_in_bot, 'empty', False):
-                        logger.info(f"bot.get_messages 从收藏夹成功")
+                    saved = await bot.get_messages("me", saved_msg_id)
+                    if saved and not getattr(saved, 'empty', False):
+                        logger.info("bot 从收藏夹读取成功，发送给用户")
                         
-                        # bot 发送给用户
-                        if saved_in_bot.video:
-                            await bot.send_video(user_id, saved_in_bot.video.file_id, caption=saved_in_bot.caption or "")
-                        elif saved_in_bot.photo:
-                            await bot.send_photo(user_id, saved_in_bot.photo.file_id, caption=saved_in_bot.caption or "")
-                        elif saved_in_bot.document:
-                            await bot.send_document(user_id, saved_in_bot.document.file_id, caption=saved_in_bot.caption or "")
-                        elif saved_in_bot.audio:
-                            await bot.send_audio(user_id, saved_in_bot.audio.file_id, caption=saved_in_bot.caption or "")
-                        elif saved_in_bot.voice:
-                            await bot.send_voice(user_id, saved_in_bot.voice.file_id, caption=saved_in_bot.caption or "")
-                        elif saved_in_bot.sticker:
-                            await bot.send_sticker(user_id, saved_in_bot.sticker.file_id)
-                        elif saved_in_bot.animation:
-                            await bot.send_animation(user_id, saved_in_bot.animation.file_id, caption=saved_in_bot.caption or "")
-                        elif saved_in_bot.text:
-                            await bot.send_message(user_id, saved_in_bot.text)
+                        if saved.video:
+                            await bot.send_video(user_id, saved.video.file_id, caption=saved.caption or "")
+                        elif saved.photo:
+                            await bot.send_photo(user_id, saved.photo.file_id, caption=saved.caption or "")
+                        elif saved.document:
+                            await bot.send_document(user_id, saved.document.file_id, caption=saved.caption or "")
+                        elif saved.audio:
+                            await bot.send_audio(user_id, saved.audio.file_id, caption=saved.caption or "")
+                        elif saved.voice:
+                            await bot.send_voice(user_id, saved.voice.file_id, caption=saved.caption or "")
+                        elif saved.sticker:
+                            await bot.send_sticker(user_id, saved.sticker.file_id)
+                        elif saved.animation:
+                            await bot.send_animation(user_id, saved.animation.file_id, caption=saved.caption or "")
+                        elif saved.text:
+                            await bot.send_message(user_id, saved.text)
                         
-                        # 删除收藏夹消息
+                        # 删除收藏
                         try:
                             await userbot.delete_messages("me", saved_msg_id)
-                            logger.info("收藏夹消息已删除")
                         except:
                             pass
                         
-                        logger.info(f"通过收藏夹发送成功: {msg_link}")
                         return True, ""
                 except Exception as e:
-                    logger.warning(f"bot 无法从收藏夹获取: {e}")
+                    logger.warning(f"bot 从收藏夹失败: {e}")
                 
-                # 3. bot 失败，用 userbot 直接从收藏夹转发给用户
+                # 尝试 userbot copy 给用户
                 try:
-                    await userbot.forward_messages(
-                        chat_id=user_id,
-                        from_chat_id="me",
-                        message_ids=saved_msg_id
-                    )
-                    logger.info(f"userbot 从收藏夹转发成功")
-                    
-                    # 删除收藏夹消息
-                    try:
-                        await userbot.delete_messages("me", saved_msg_id)
-                        logger.info("收藏夹消息已删除")
-                    except:
-                        pass
-                    
-                    return True, ""
+                    saved = await userbot.get_messages("me", saved_msg_id)
+                    if saved and not getattr(saved, 'empty', False):
+                        logger.info("尝试 copy 消息给用户")
+                        
+                        if saved.video:
+                            await userbot.send_video(user_id, saved.video.file_id, caption=saved.caption or "")
+                        elif saved.photo:
+                            await userbot.send_photo(user_id, saved.photo.file_id, caption=saved.caption or "")
+                        elif saved.document:
+                            await userbot.send_document(user_id, saved.document.file_id, caption=saved.caption or "")
+                        elif saved.audio:
+                            await userbot.send_audio(user_id, saved.audio.file_id, caption=saved.caption or "")
+                        elif saved.voice:
+                            await userbot.send_voice(user_id, saved.voice.file_id, caption=saved.caption or "")
+                        elif saved.sticker:
+                            await userbot.send_sticker(user_id, saved.sticker.file_id)
+                        elif saved.animation:
+                            await userbot.send_animation(user_id, saved.animation.file_id, caption=saved.caption or "")
+                        elif saved.text:
+                            await userbot.send_message(user_id, saved.text)
+                        
+                        # 删除收藏
+                        try:
+                            await userbot.delete_messages("me", saved_msg_id)
+                        except:
+                            pass
+                        
+                        return True, ""
                 except Exception as e:
-                    logger.error(f"userbot 从收藏夹转发失败: {e}")
-                    # 尝试删除收藏夹消息
-                    try:
-                        await userbot.delete_messages("me", saved_msg_id)
-                    except:
-                        pass
+                    logger.error(f"userbot copy 失败: {e}")
+                
+                # 清理收藏
+                try:
+                    await userbot.delete_messages("me", saved_msg_id)
+                except:
+                    pass
             
             except Exception as e:
                 logger.error(f"收藏夹中转失败: {e}", exc_info=True)
         
-        return False, "❌ 该消息无法转发（可能是受限内容）"
+        return False, "❌ 该消息无法转发（受限内容）"
         
     except Exception as e:
         logger.error(f"异常: {e}")
