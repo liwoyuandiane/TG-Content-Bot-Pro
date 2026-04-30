@@ -1,5 +1,6 @@
 """消息服务 - 智能获取方案"""
 import logging
+import asyncio
 
 from pyrogram import Client
 from pyrogram.errors import RPCError
@@ -107,40 +108,23 @@ async def forward_message(userbot: Client, bot: Client, user_id: int, msg_link: 
                 
                 logger.info(f"已转发到收藏夹: msg_id={saved_msg_id}")
                 
-                # 2. bot 从收藏夹获取消息
-                saved_msg = await bot.get_messages("me", saved_msg_id)
+                # 2. 从收藏夹转发给用户
+                await userbot.forward_messages(
+                    chat_id=user_id,
+                    from_chat_id="me",
+                    message_ids=saved_msg_id
+                )
                 
-                if saved_msg and not getattr(saved_msg, 'empty', False):
-                    # 3. bot 发送给用户
-                    if saved_msg.video:
-                        await bot.send_video(user_id, saved_msg.video.file_id, caption=saved_msg.caption or "")
-                    elif saved_msg.photo:
-                        await bot.send_photo(user_id, saved_msg.photo.file_id, caption=saved_msg.caption or "")
-                    elif saved_msg.document:
-                        await bot.send_document(user_id, saved_msg.document.file_id, caption=saved_msg.caption or "")
-                    elif saved_msg.audio:
-                        await bot.send_audio(user_id, saved_msg.audio.file_id, caption=saved_msg.caption or "")
-                    elif saved_msg.voice:
-                        await bot.send_voice(user_id, saved_msg.voice.file_id, caption=saved_msg.voice or "")
-                    elif saved_msg.sticker:
-                        await bot.send_sticker(user_id, saved_msg.sticker.file_id)
-                    elif saved_msg.animation:
-                        await bot.send_animation(user_id, saved_msg.animation.file_id, caption=saved_msg.caption or "")
-                    elif saved_msg.text:
-                        await bot.send_message(user_id, saved_msg.text)
-                    else:
-                        return False, "❌ 不支持的消息类型"
-                    
-                    logger.info(f"通过收藏夹发送成功: {msg_link}")
-                    
-                    # 4. 删除收藏夹消息
-                    try:
-                        await userbot.delete_messages("me", saved_msg_id)
-                        logger.info("收藏夹消息已删除")
-                    except:
-                        pass
-                    
-                    return True, ""
+                logger.info(f"已从收藏夹转发给用户: {user_id}")
+                
+                # 3. 删除收藏夹消息
+                try:
+                    await userbot.delete_messages("me", saved_msg_id)
+                    logger.info("收藏夹消息已删除")
+                except Exception as e:
+                    logger.warning(f"删除收藏夹消息失败: {e}")
+                
+                return True, ""
             
             except Exception as e:
                 logger.error(f"收藏夹中转失败: {e}", exc_info=True)
