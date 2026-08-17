@@ -9,6 +9,9 @@ from ..services.session_service import session_service
 from ..utils.security import security_manager
 from ..utils.session_utils import sanitize_pyrogram_session, validate_pyrogram_session
 
+# 韧性保护:对 PERSISTENT_TIMESTAMP_OUTDATED 等致命错误做退避重连,防止连接假死
+from ..core.resilience import install_client_resilience
+
 logger = logging.getLogger(__name__)
 
 
@@ -19,6 +22,8 @@ class ClientManager:
         self.bot: Optional[PyrogramClient] = None
         self.userbot: Optional[PyrogramClient] = None
         self.session_svc = session_service
+        self.bot_resilience = None
+        self.userbot_resilience = None
         self.logger = logging.getLogger(__name__)
     
     async def initialize_clients(self):
@@ -119,6 +124,8 @@ class ClientManager:
             try:
                 await self.bot.start()
                 logger.info("Pyrogram bot客户端启动成功")
+                # 安装韧性保护:捕获 PersistentTimestampOutdated 等致命错误并自动退避重连
+                self.bot_resilience = install_client_resilience(self.bot)
             except Exception as e:
                 logger.error(f"Pyrogram bot启动失败: {e}")
                 self.bot = None
@@ -177,6 +184,8 @@ class ClientManager:
             
             if userbot.is_connected:
                 self.userbot = userbot
+                # 安装韧性保护:捕获 PersistentTimestampOutdated 等致命错误并自动退避重连
+                self.userbot_resilience = install_client_resilience(userbot)
             else:
                 logger.warning("Userbot客户端已启动但未连接")
                 await userbot.stop()

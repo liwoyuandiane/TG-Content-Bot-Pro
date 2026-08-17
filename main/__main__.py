@@ -10,7 +10,7 @@ if os.path.exists('.env'):
         main_keys = ['API_ID', 'API_HASH', 'BOT_TOKEN', 'AUTH', 'MONGO_DB']
         # 可选配置键
         optional_keys = ['FORCESUB', 'SESSION', 'HEALTH_CHECK_PORT', 'ENCRYPTION_KEY', 
-                     'LOG_LEVEL', 'DEBUG', 'ENVIRONMENT', 'DB_RESET']
+                     'LOG_LEVEL', 'DEBUG', 'ENVIRONMENT', 'DB_RESET', 'SESSION_DIR']
         for key in main_keys + optional_keys:
             try:
                 os.environ[key] = str(env_config(key))
