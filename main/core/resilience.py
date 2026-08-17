@@ -17,6 +17,7 @@ import logging
 import time
 from typing import Any, Optional
 
+from pyrogram.errors import BadRequest, InternalServerError, RPCError
 from pyrogram.errors import PersistentTimestampOutdated
 
 logger = logging.getLogger(__name__)
@@ -67,9 +68,18 @@ class ClientResilienceGuard:
                 return await guard._original_handle_updates(updates)
             except PersistentTimestampOutdated as e:
                 await guard._recover(f"Telegram PERSISTENT_TIMESTAMP_OUTDATED: {e}")
+            except InternalServerError as e:
+                # 服务器内部错误(500):可能是临时性故障,退避后恢复
+                await guard._recover(f"Telegram 服务器内部错误: {e}")
+            except BadRequest as e:
+                # 单条 update 请求无效(如 Peer id invalid / ChannelPrivate 等):
+                # 只是这一条更新失败,不中断 update 流,仅记录日志
+                logger.warning(
+                    f"handle_updates 跳过无效更新(非致命): {type(e).__name__}: {e}"
+                )
             except Exception as e:  # noqa: BLE001 - 兜底所有未捕获异常
+                # 未知异常:保守起见记录日志,不重启(避免误伤正常连接)
                 logger.error(f"handle_updates 未捕获异常: {e}", exc_info=True)
-                await guard._recover(f"handle_updates 异常: {e}")
             return None
 
         self.client.handle_updates = guarded_handle_updates
