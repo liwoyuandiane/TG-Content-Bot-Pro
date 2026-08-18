@@ -200,6 +200,63 @@ class DatabaseManager:
             logger.error(f"添加用户失败: {e}")
             return False
 
+    async def sync_auth_users(self) -> int:
+        """将 AUTH 环境变量中的授权用户同步到数据库(upsert)
+
+        启动时调用: 确保 AUTH 列表中的用户始终存在且处于授权状态。
+        - 已有用户: 仅更新授权状态(不覆盖已有的转发统计/套餐数据)
+        - 新用户: 创建完整用户记录
+        - 返回处理的用户数;失败返回 0
+        """
+        try:
+            self._ensure_connection()
+            if self.db is None:
+                return 0
+            from ..config import settings
+            auth_users = settings.get_auth_users()
+            if not auth_users:
+                return 0
+
+            now = datetime.now()
+            today = now.date().isoformat()
+            month = now.strftime("%Y-%m")
+            count = 0
+            for user_id in auth_users:
+                self.db.users.update_one(
+                    {"user_id": user_id},
+                    {
+                        "$set": {
+                            "is_authorized": True,
+                            "plan": "premium",
+                            "is_premium": True,
+                            "last_used": now,
+                        },
+                        "$setOnInsert": {
+                            "join_date": now,
+                            "is_banned": False,
+                            "total_forwards": 0,
+                            "total_size": 0,
+                            "last_forward": None,
+                            "daily_upload": 0,
+                            "daily_download": 0,
+                            "monthly_upload": 0,
+                            "monthly_download": 0,
+                            "total_upload": 0,
+                            "total_download": 0,
+                            "last_reset_daily": today,
+                            "last_reset_monthly": month,
+                        },
+                    },
+                    upsert=True
+                )
+                count += 1
+
+            logger.info(f"AUTH 用户已同步到数据库: {count} 个用户")
+            return count
+        except Exception as e:
+            logger.error(f"同步AUTH用户失败: {e}")
+            return 0
+
     async def get_user(self, user_id: int) -> Optional[Dict[str, Any]]:
         if self.db is None:
             return None
@@ -276,7 +333,8 @@ class DatabaseManager:
             return 0
 
     async def add_forward(self, user_id: int, message_link: str, message_id: int,
-                         chat_id: str, media_type: str, file_size: int = 0, status: str = "success") -> bool:
+                         chat_id: str, media_type: str, file_size: int = 0, status: str = "success",
+                         message_meta: Optional[Dict[str, Any]] = None) -> bool:
         if self.db is None:
             return False
 
@@ -284,7 +342,7 @@ class DatabaseManager:
             self._ensure_connection()
             now = datetime.now()
 
-            self.db.message_history.insert_one({
+            record = {
                 "user_id": user_id,
                 "message_link": message_link,
                 "message_id": message_id,
@@ -293,7 +351,12 @@ class DatabaseManager:
                 "file_size": file_size,
                 "forward_date": now,
                 "status": status
-            })
+            }
+            # 附加元数据(如批量信息 batch=True, batch_count)
+            if message_meta:
+                record.update(message_meta)
+
+            self.db.message_history.insert_one(record)
 
             if status == "success":
                 self.db.users.update_one(
@@ -404,7 +467,10 @@ class DatabaseManager:
                 "media_type": h.get("media_type"),
                 "file_size": h.get("file_size", 0),
                 "forward_date": h.get("forward_date").isoformat() if h.get("forward_date") else "",
-                "status": h.get("status")
+                "status": h.get("status"),
+                "batch": h.get("batch", False),
+                "batch_count": h.get("batch_count"),
+                "batch_requested": h.get("batch_requested")
             } for h in history]
         except Exception as e:
             logger.error(f"获取转发历史失败: {e}")
@@ -933,7 +999,7 @@ class DatabaseManager:
                 }},
                 upsert=True
             )
-            logger.info(f"BotClient.session 已保存到数据库")
+            logger.info("BotClient.session 已保存到数据库")
             return True
         except Exception as e:
             logger.error(f"保存 BotClient.session 失败: {e}")

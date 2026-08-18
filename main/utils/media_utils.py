@@ -19,17 +19,16 @@ def hhmmss(seconds: int) -> str:
     """将秒数转换为HH:MM:SS格式"""
     return time.strftime('%H:%M:%S', time.gmtime(seconds))
 
-
 async def screenshot(video: str, duration: int, sender: int) -> Optional[str]:
     """为视频生成缩略图"""
     # 检查用户特定的缩略图
     user_thumb = f'{sender}.jpg'
     if file_manager.file_exists(user_thumb):
         return user_thumb
-    
+
     time_stamp = hhmmss(int(duration) // 2)
     out = dt.now().isoformat("_", "seconds") + ".jpg"
-    
+
     cmd = [
         "ffmpeg",
         "-ss",
@@ -41,7 +40,7 @@ async def screenshot(video: str, duration: int, sender: int) -> Optional[str]:
         f"{out}",
         "-y"
     ]
-    
+
     try:
         process = await asyncio.create_subprocess_exec(
             *cmd,
@@ -63,7 +62,6 @@ async def screenshot(video: str, duration: int, sender: int) -> Optional[str]:
     except Exception as e:
         logger.warning(f"生成缩略图失败: {e}")
         return None
-
 
 async def progress_for_pyrogram(current: int, total: int, client, ud_type: str, message, start: float):
     """Pyrogram下载/上传进度回调"""
@@ -100,7 +98,6 @@ async def progress_for_pyrogram(current: int, total: int, client, ud_type: str, 
         except Exception as e:
             logger.warning(f"生成缩略图失败: {e}")
 
-
 def humanbytes(size: int) -> str:
     """将字节数转换为人类可读格式"""
     if not size:
@@ -108,11 +105,10 @@ def humanbytes(size: int) -> str:
     power = 2**10
     n = 0
     Dic_powerN = {0: ' ', 1: 'Ki', 2: 'Mi', 3: 'Gi', 4: 'Ti'}
-    while size > power:
+    while size >= power and n < 4:
         size /= power
         n += 1
     return str(round(size, 2)) + " " + Dic_powerN[n] + 'B'
-
 
 def TimeFormatter(milliseconds: int) -> str:
     """将毫秒转换为时间格式"""
@@ -126,7 +122,6 @@ def TimeFormatter(milliseconds: int) -> str:
         ((str(seconds) + "s, ") if seconds else "") + \
         ((str(milliseconds) + "ms, ") if milliseconds else "")
     return tmp[:-2]
-
 
 def get_link(string: str) -> Optional[str]:
     """从字符串中提取链接"""

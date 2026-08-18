@@ -1,6 +1,5 @@
 """应用主入口"""
 import sys
-import logging
 import asyncio
 import os
 import threading
@@ -31,40 +30,37 @@ lock_file = None
 _health_server = None
 _health_thread = None
 
-
 def check_and_cleanup_session():
     """检查 API_ID 是否变化，如果变化则删除 session 文件"""
     session_dir = os.environ.get("SESSION_DIR", "/app/sessions")
     api_id_file = os.path.join(session_dir, ".api_id")
     current_api_id = str(settings.API_ID)
-    
+
     # 如果目录不存在，创建它
     os.makedirs(session_dir, exist_ok=True)
-    
+
     # 检查之前记录的 API_ID
     if os.path.exists(api_id_file):
         with open(api_id_file, 'r') as f:
             saved_api_id = f.read().strip()
-        
+
         if saved_api_id != current_api_id:
             logger.warning(f"检测到 API_ID 变化: {saved_api_id} -> {current_api_id}")
             logger.warning("正在清理旧的 session 文件...")
-            
+
             # 删除所有 session 文件
             for file in os.listdir(session_dir):
                 if file.endswith('.session'):
                     file_path = os.path.join(session_dir, file)
                     os.remove(file_path)
                     logger.info(f"已删除: {file_path}")
-    
+
     # 保存当前 API_ID
     with open(api_id_file, 'w') as f:
         f.write(current_api_id)
 
-
 # 启动时检查 session
 check_and_cleanup_session()
-
 
 # 健康检查处理器
 class HealthCheckHandler(BaseHTTPRequestHandler):
@@ -84,11 +80,10 @@ class HealthCheckHandler(BaseHTTPRequestHandler):
             self.send_header('Content-type', 'text/plain')
             self.end_headers()
             self.wfile.write(b'Not Found')
-    
+
     def log_message(self, format, *args):
         # 重写日志方法，避免打印到控制台
         pass
-
 
 def acquire_lock():
     """获取单实例锁"""
@@ -111,7 +106,7 @@ def acquire_lock():
                             logger.warning(f"⚠️  检测到陈旧的锁文件 (PID: {existing_pid} 已不存在)，将重新创建锁")
             except Exception as e:
                 logger.warning(f"⚠️  读取现有锁文件时出错: {e}，将重新创建锁")
-        
+
         # 创建锁文件
         try:
             lock_file = open(LOCK_FILE_PATH, 'w')
@@ -159,7 +154,6 @@ def start_health_server():
         logger.error(f"❌ 启动健康检查服务器失败: {e}")
         raise
 
-
 def stop_health_server():
     """停止健康检查HTTP服务器"""
     global _health_server
@@ -172,19 +166,18 @@ def stop_health_server():
         except Exception as e:
             logger.error(f"❌ 停止健康检查服务器失败: {e}")
 
-
 def check_and_reset_database():
     """检查并重置数据库（如果DB_RESET环境变量为true）"""
     db_reset = os.environ.get('DB_RESET', '').lower() in ['true', '1', 'yes']
-    
+
     if db_reset:
         logger.info("🔄 检测到 DB_RESET=true，开始重置数据库...")
-        
+
         try:
             if not db_manager.is_connected():
                 logger.error("❌ 数据库未连接，无法执行重置")
                 return False
-                
+
             # 删除所有集合中的数据
             collections = ["users", "message_history", "batch_tasks", "settings"]
             for collection_name in collections:
@@ -192,11 +185,11 @@ def check_and_reset_database():
                     count = db_manager.db[collection_name].count_documents({})
                     db_manager.db[collection_name].delete_many({})
                     logger.info(f"  ✅ 清空集合 {collection_name} ({count} 条记录)")
-            
+
             # 重新创建必要的索引
             logger.info("  🔄 重新创建索引...")
             db_manager._create_indexes()
-            
+
             # 添加主用户
             auth_users = settings.get_auth_users()
             for user_id in auth_users:
@@ -217,14 +210,13 @@ def check_and_reset_database():
                     "last_reset_monthly": datetime.now().strftime("%Y-%m")
                 })
                 logger.info(f"  ✅ 添加主用户 {user_id}")
-            
+
             logger.info("✅ 数据库重置完成")
             return True
-            
+
         except Exception as e:
             logger.error(f"❌ 数据库重置过程中出错: {e}")
             return False
-
 
 async def setup_commands():
     """设置机器人命令"""
@@ -235,67 +227,73 @@ async def setup_commands():
         BotCommand("plan", "👑 我的账户信息"),
         BotCommand("batch", "📦 批量保存消息"),
         BotCommand("cancel", "❌ 取消当前任务"),
-        
+
         # 管理员命令 - 用户管理
         BotCommand("authorize", "🔓 授权用户\n用法: /authorize 123456789"),
         BotCommand("unauthorize", "🔒 移除授权\n用法: /unauthorize 123456789"),
         BotCommand("authorized", "📋 授权列表"),
-        
+
         # 管理员命令 - 等级管理
         BotCommand("upgrade", "⬆️ 升级Premium\n用法: /upgrade 123456789"),
         BotCommand("downgrade", "⬇️ 降级普通\n用法: /downgrade 123456789"),
-        
+
         # 管理员命令 - 数据管理
         BotCommand("history", "📜 转发历史"),
         BotCommand("clearhistory", "🗑️ 清除历史"),
-        
+
         # 管理员命令 - SESSION管理
         BotCommand("sessions", "📋 所有SESSION"),
         BotCommand("addsession", "➕ 添加SESSION\n用法: /addsession <session>"),
         BotCommand("generatesession", "🔐 生成SESSION"),
         BotCommand("delsession", "🗑️ 删除SESSION\n用法: /delsession me"),
         BotCommand("mysession", "🔐 我的SESSION"),
-        
+
         # 管理员命令 - 队列
         BotCommand("queue", "📋 队列状态"),
     ]
-    
+
     try:
         await client_manager.bot.set_bot_commands(commands)
         logger.info("机器人命令已自动设置完成！")
     except Exception as e:
         logger.error(f"设置命令时出错: {e}", exc_info=True)
 
-
 # 不再加载插件系统
-
 
 async def startup():
     """应用启动"""
     logger.info("=" * 50)
     logger.info("🤖 TG-Content-Bot-Pro 启动中...")
     logger.info("=" * 50)
-    
+
     # 检查并重置数据库（如果需要）
     check_and_reset_database()
-    
+
     # 配置验证（使用 config.py 中的验证）
     if not settings._validated:
         logger.warning("⚠️ 配置验证失败，应用将以降级模式启动")
         logger.warning("📡 仅启动健康检查服务，无法连接到Telegram")
         logger.warning("💡 请检查.env文件中的API_ID、API_HASH和BOT_TOKEN配置")
-        
+
         # 降级模式：只启动健康检查服务
         return False
-    
+
+    # 同步 AUTH 授权用户到数据库(幂等, 不覆盖已有统计)
+    try:
+        # sync_auth_users 内部会自行建立连接, 无需预先判断
+        synced = await db_manager.sync_auth_users()
+        logger.info(f"👥 AUTH 授权用户同步完成: {synced} 个")
+    except Exception as e:
+        logger.warning(f"AUTH 用户同步失败(不影响启动): {e}")
+
     # 初始化客户端
     try:
         await client_manager.initialize_clients()
-        logger.info(f"客户端初始化成功")
+        logger.info("客户端初始化成功")
     except Exception as e:
         logger.error(f"客户端初始化失败: {e}", exc_info=True)
         logger.warning("将继续启动应用，但部分功能可能不可用")
-    
+
     # 注册 Pyrogram 消息处理器
     if client_manager.bot:
         from .handlers import register_all_handlers
@@ -303,7 +301,7 @@ async def startup():
         logger.info("✅ Pyrogram 消息处理器已注册")
     else:
         logger.error("❌ Bot客户端未初始化！")
-    
+
     # 设置机器人命令
     try:
         if client_manager.bot and client_manager.bot.is_connected:
@@ -312,13 +310,12 @@ async def startup():
             logger.warning("Pyrogram客户端未连接，跳过命令设置")
     except Exception as e:
         logger.error(f"设置机器人命令失败: {e}", exc_info=True)
-    
+
     logger.info("✅ 部署成功！")
     logger.info("📱 TG消息提取器已启动")
     logger.info("🗄️  数据库初始化完成")
     logger.info("🤖 机器人命令已自动同步...")
     logger.info("=" * 50)
-
 
 async def shutdown():
     """应用关闭"""
@@ -332,19 +329,18 @@ async def shutdown():
 
     logger.info("应用已关闭")
 
-
 async def main_async():
     """异步主函数"""
     try:
         # 运行启动函数
         startup_result = await startup()
-        
+
         # 如果启动失败（配置无效），进入降级模式
         if startup_result is False:
             logger.info("📡 降级模式启动完成 - 仅健康检查服务可用")
             logger.info(f"🔗 健康检查地址: http://localhost:{settings.HEALTH_CHECK_PORT}/health")
             logger.info("💡 请配置有效的Telegram API凭证以启用完整功能")
-            
+
             # 保持应用运行，提供健康检查服务
             try:
                 while True:
@@ -353,30 +349,46 @@ async def main_async():
             except KeyboardInterrupt:
                 logger.info("收到中断信号，正在关闭...")
             return
-        
-        # 检查客户端是否已初始化
-        if client_manager.bot is not None and hasattr(client_manager.bot, 'is_connected') and client_manager.bot.is_connected:
-            logger.info("🚀 机器人开始监听消息...")
-            
-            # Pyrogram: 保持客户端运行
+
+        # 确保客户端已初始化(未初始化则周期重试, 进入降级自愈)
+        while not (client_manager.bot is not None
+                   and getattr(client_manager.bot, 'is_connected', False)):
+            logger.warning("⚠️ 客户端未初始化或未连接，进入降级模式自愈...")
+            logger.info(f"📡 健康检查地址: http://localhost:{settings.HEALTH_CHECK_PORT}/health")
             try:
-                while True:
-                    await asyncio.sleep(3600)  # 每小时检查一次
-            except asyncio.CancelledError:
-                logger.info("收到停止信号")
-        else:
-            logger.warning("⚠️ 客户端未初始化或未连接，机器人将以降级模式运行...")
-            logger.info(f"📡 健康检查服务器已启动，可以访问 http://localhost:{settings.HEALTH_CHECK_PORT}/health 检查服务状态")
-            logger.info("⏰ 应用将保持运行，等待客户端连接...")
-            
-            # 保持应用运行，即使客户端未连接
-            try:
-                while True:
-                    await asyncio.sleep(60)  # 每分钟检查一次
-                    logger.debug("应用仍在运行...")
-            except KeyboardInterrupt:
-                logger.info("收到中断信号，正在关闭...")
-            
+                await client_manager.initialize_clients()
+                if client_manager.bot and client_manager.bot.is_connected:
+                    logger.info("✅ 客户端初始化成功")
+                    break
+            except Exception as e:
+                logger.error(f"客户端初始化失败: {e}", exc_info=True)
+            await asyncio.sleep(60)
+
+        logger.info("🚀 机器人开始监听消息...")
+
+        # 主循环: 周期性检查客户端健康状态, 断开时自动重连
+        disconnected_count = 0
+        while True:
+            await asyncio.sleep(60)  # 每分钟检查一次
+            bot_ok = (
+                client_manager.bot is not None
+                and client_manager.bot.is_connected
+            )
+            if bot_ok:
+                disconnected_count = 0
+            else:
+                disconnected_count += 1
+                logger.warning(
+                    f"⚠️ bot 连接断开 (连续 {disconnected_count} 次检测), 尝试重连..."
+                )
+                if disconnected_count >= 3:
+                    try:
+                        await client_manager.restart_bot()
+                        disconnected_count = 0
+                        logger.info("✅ bot 已自动重连")
+                    except Exception as e:
+                        logger.error(f"bot 重连失败: {e}", exc_info=True)
+
     except KeyboardInterrupt:
         logger.info("收到中断信号，正在关闭...")
     except Exception as e:
@@ -385,7 +397,6 @@ async def main_async():
         # 确保正确关闭
         await shutdown()
 
-
 def main():
     """主函数"""
     # 检查是否能获取单实例锁
@@ -393,14 +404,14 @@ def main():
         logger.error("🚨 程序已在运行中，无法启动多个实例")
         logger.info("💡 如需启动新实例，请先停止当前运行的实例")
         sys.exit(1)
-    
+
     # 注册退出处理函数，确保程序退出时释放锁和关闭服务
     atexit.register(release_lock)
     atexit.register(stop_health_server)
 
     # 启动健康检查服务器
     start_health_server()
-    
+
     try:
         # 使用单个事件循环运行整个应用
         asyncio.run(main_async())
@@ -411,7 +422,6 @@ def main():
     finally:
         # 确保释放锁
         release_lock()
-
 
 if __name__ == "__main__":
     main()

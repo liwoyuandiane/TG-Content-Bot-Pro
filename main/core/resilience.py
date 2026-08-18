@@ -15,9 +15,9 @@
 import asyncio
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 
-from pyrogram.errors import BadRequest, InternalServerError, RPCError
+from pyrogram.errors import BadRequest, InternalServerError
 from pyrogram.errors import PersistentTimestampOutdated
 
 logger = logging.getLogger(__name__)
@@ -52,6 +52,7 @@ class ClientResilienceGuard:
         self._restarting = False
         self._consecutive_errors = 0
         self._last_error_time = 0.0
+        self._recover_lock = asyncio.Lock()
         self._original_handle_updates = client.handle_updates
 
     def install(self) -> "ClientResilienceGuard":
@@ -87,41 +88,48 @@ class ClientResilienceGuard:
         return self
 
     async def _recover(self, reason: str) -> None:
-        """致命错误恢复:退避 sleep + 重启客户端"""
-        now = time.monotonic()
-        self._consecutive_errors += 1
+        """致命错误恢复:退避 sleep + 重启客户端
 
-        # 错误安静一段时间后,重置退避状态(说明问题已恢复)
-        if self._last_error_time and (now - self._last_error_time) >= self.reset_after:
-            self._consecutive_errors = 1
-            self._backoff = self.initial_backoff
-        self._last_error_time = now
+        使用锁保证并发触发时退避计数与重启调度串行执行。
+        """
+        # 串行化恢复流程, 避免多个 update task 并发时重复计数/重启
+        async with self._recover_lock:
+            now = time.monotonic()
+            self._consecutive_errors += 1
 
-        # 指数退避:连续错误次数越多等待越久,封顶 max_backoff
-        delay = min(self.initial_backoff * (2 ** (self._consecutive_errors - 1)), self.max_backoff)
-        self._backoff = delay
-        logger.error(
-            f"🔴 检测到客户端致命错误(连续 {self._consecutive_errors} 次): {reason}"
-        )
-        logger.error(f"⏳ 等待 {delay} 秒后再重建客户端连接...")
-        await asyncio.sleep(delay)
+            # 错误安静一段时间后,重置退避状态(说明问题已恢复)
+            if self._last_error_time and (now - self._last_error_time) >= self.reset_after:
+                self._consecutive_errors = 1
+                self._backoff = self.initial_backoff
+            self._last_error_time = now
 
-        if self._restarting:
-            logger.info("已有重启在进行中,跳过本次重启")
-            return
-        if now - self._last_restart < self.restart_cooldown:
-            logger.info(
-                f"距离上次重启不足 {self.restart_cooldown}s,跳过本次重启"
+            # 指数退避:连续错误次数越多等待越久,封顶 max_backoff
+            delay = min(self.initial_backoff * (2 ** (self._consecutive_errors - 1)), self.max_backoff)
+            self._backoff = delay
+            logger.error(
+                f"🔴 检测到客户端致命错误(连续 {self._consecutive_errors} 次): {reason}"
             )
-            return
+            logger.error(f"⏳ 等待 {delay} 秒后再重建客户端连接...")
 
-        self._restarting = True
-        try:
-            # 在独立 task 中执行 stop+start,避免阻塞当前 update 处理
-            self.client.loop.create_task(self._do_restart())
-        except Exception as e:  # noqa: BLE001
-            logger.error(f"调度客户端重启失败: {e}", exc_info=True)
-            self._restarting = False
+            if self._restarting:
+                logger.info("已有重启在进行中,跳过本次重启")
+                return
+            if now - self._last_restart < self.restart_cooldown:
+                logger.info(
+                    f"距离上次重启不足 {self.restart_cooldown}s,跳过本次重启"
+                )
+                return
+
+            self._restarting = True
+            try:
+                # 在独立 task 中执行 stop+start,避免阻塞当前 update 处理
+                self.client.loop.create_task(self._do_restart())
+            except Exception as e:  # noqa: BLE001
+                logger.error(f"调度客户端重启失败: {e}", exc_info=True)
+                self._restarting = False
+
+            # 在锁内等待退避, 保证并发触发者不会重复计数
+            await asyncio.sleep(delay)
 
     async def _do_restart(self) -> None:
         """执行 stop + start 重启流程,完成后更新状态"""

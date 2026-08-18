@@ -3,8 +3,6 @@
 # New code should use the modern structure with app.py as the entry point
 
 # Import core components for backward compatibility
-from .core.clients import client_manager
-from .core.database import db_manager
 from .config import settings
 
 # For backward compatibility with plugins that might import directly from here

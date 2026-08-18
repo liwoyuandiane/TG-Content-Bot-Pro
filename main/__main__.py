@@ -1,6 +1,5 @@
 """应用入口"""
 import os
-import sys
 
 if os.path.exists('.env'):
     try:
