@@ -78,6 +78,10 @@ class ClientResilienceGuard:
                 logger.warning(
                     f"handle_updates 跳过无效更新(非致命): {type(e).__name__}: {e}"
                 )
+            except ValueError as e:  # Peer id invalid 等可预期错误
+                # 这类错误通常是因为访问了未加入的频道或已删除的频道
+                # 记录为警告，避免刷屏并且不影响后续更新处理
+                logger.warning(f"忽略无效的 Peer id: {e}")
             except Exception as e:  # noqa: BLE001 - 兜底所有未捕获异常
                 # 未知异常:保守起见记录日志,不重启(避免误伤正常连接)
                 logger.error(f"handle_updates 未捕获异常: {e}", exc_info=True)

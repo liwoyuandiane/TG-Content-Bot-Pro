@@ -96,14 +96,20 @@ def acquire_lock():
                 with open(LOCK_FILE_PATH, 'r') as f:
                     existing_pid = f.read().strip()
                     if existing_pid:
-                        # 检查该进程是否仍在运行
-                        try:
-                            os.kill(int(existing_pid), 0)  # 不发送信号，只检查进程是否存在
-                            logger.error(f"❌ 检测到另一个实例正在运行 (PID: {existing_pid})，无法启动多个实例")
-                            return False
-                        except (OSError, ValueError):
-                            # 进程不存在，可以安全地覆盖锁文件
-                            logger.warning(f"⚠️  检测到陈旧的锁文件 (PID: {existing_pid} 已不存在)，将重新创建锁")
+                        # 容器重启后 PID 可能被复用：如果锁文件里的 PID 恰好
+                        # 等于当前进程自己的 PID(旧锁的 PID namespace 复用),
+                        # 视为陈旧锁直接覆盖, 避免产生"检测到另一个实例"假死循环
+                        if int(existing_pid) == os.getpid():
+                            logger.warning(f"⚠️  锁文件记录到本进程 PID({existing_pid}), 判定为容器重启残留的陈旧锁, 将重新创建")
+                            existing_pid = ""  # 视为无锁, 继续走创建锁流程
+                        else:
+                            try:
+                                os.kill(int(existing_pid), 0)  # 不发送信号，只检查进程是否存在
+                                logger.error(f"❌ 检测到另一个实例正在运行 (PID: {existing_pid})，无法启动多个实例")
+                                return False
+                            except (OSError, ValueError):
+                                # 进程不存在，可以安全地覆盖锁文件
+                                logger.warning(f"⚠️  检测到陈旧的锁文件 (PID: {existing_pid} 已不存在)，将重新创建锁")
             except Exception as e:
                 logger.warning(f"⚠️  读取现有锁文件时出错: {e}，将重新创建锁")
 
