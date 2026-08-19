@@ -2,12 +2,13 @@ FROM python:3.11-alpine
 
 WORKDIR /app
 
-RUN apk add --no-cache curl && \
+RUN apk add --no-cache curl gcc musl-dev python3-dev && \
     pip install --no-cache-dir --upgrade pip && \
     adduser -D -s /bin/sh appuser
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt && \
+    apk del --no-cache gcc musl-dev python3-dev 2>/dev/null || true
 
 COPY main/ ./main/
 COPY start.sh .
